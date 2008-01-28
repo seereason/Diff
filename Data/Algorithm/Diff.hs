@@ -22,13 +22,13 @@ module Data.Algorithm.Diff (DI(..), getDiff, getGroupedDiff) where
 import Data.Array.Unboxed
 import Data.List
 
-data DL = DL {poi::Int, poj::Int, path::[DI]} deriving (Show, Eq)
-
-instance Ord DL where x <= y = poi x <= poj x
-
 -- | Difference Indicator. A value is either from the First list, the Second
 -- or from Both.
 data DI = F | S | B deriving (Show, Eq)
+
+data DL = DL {poi::Int, poj::Int, path::[DI]} deriving (Show, Eq)
+
+instance Ord DL where x <= y = poi x <= poi y
 
 canDiag :: Eq a => [a] -> [a] -> Int -> Int -> (Int, Int) -> Bool
 canDiag as bs lena lenb =
@@ -38,6 +38,7 @@ canDiag as bs lena lenb =
       safeGet :: UArray (Int, Int) Bool -> (Int, Int) -> Bool
       safeGet ar ind@(i,j) = if i < lena && j < lenb then ar ! ind else False
 
+chunk :: Int -> [a] -> [[a]]
 chunk x = unfoldr (\a -> case splitAt x a of ([],[]) -> Nothing; a' -> Just a')
 
 dstep :: ((Int,Int)->Bool) -> [DL] -> [DL]
@@ -49,9 +50,9 @@ dstep cd dls = map maximum $ [hd]:(chunk 2 rst)
 
 addsnake :: ((Int,Int)->Bool) -> DL -> DL
 addsnake cd dl 
-    | cd (pi,pj) = addsnake cd $
+    | cd (pi, pj) = addsnake cd $
                    dl {poi = pi + 1, poj = pj + 1, path=(B : path dl)}
-    | otherwise = dl
+    | otherwise   = dl
     where pi = poi dl; pj = poj dl
 
 lcs :: (Eq a) => [a] -> [a] -> [DI]
@@ -61,16 +62,16 @@ lcs as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
             where cd = canDiag as bs lena lenb
                   lena = length as; lenb = length bs
 
--- | Takes two lists and returns a list indicating the differnences
+-- | Takes two lists and returns a list indicating the differences
 -- between them.
 getDiff :: (Eq t) => [t] -> [t] -> [(DI, t)]
-getDiff x y = markup x y . reverse $ lcs x y
+getDiff a b = markup a b . reverse $ lcs a b
     where markup (x:xs)   ys   (F:ds) = (F, x) : markup xs ys ds
           markup   xs   (y:ys) (S:ds) = (S, y) : markup xs ys ds
-          markup (x:xs) (y:ys) (B:ds) = (B, x) : markup xs ys ds
+          markup (x:xs) (_:ys) (B:ds) = (B, x) : markup xs ys ds
           markup _ _ _ = []
 
--- | Takes two lists and returns a list indicating the differnences
+-- | Takes two lists and returns a list indicating the differences
 -- between them, grouped into chunks.
 getGroupedDiff :: (Eq t) => [t] -> [t] -> [(DI, [t])]
 getGroupedDiff a b = map go . groupBy (\x y -> fst x == fst y) $ getDiff a b
