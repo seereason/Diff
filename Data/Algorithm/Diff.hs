@@ -19,7 +19,7 @@
 -----------------------------------------------------------------------------
 
 module Data.Algorithm.Diff (DI(..), getDiff, getGroupedDiff) where
-import Data.Array.Unboxed
+import Data.Array
 import Data.List
 
 -- | Difference Indicator. A value is either from the First list, the Second
@@ -30,13 +30,11 @@ data DL = DL {poi::Int, poj::Int, path::[DI]} deriving (Show, Eq)
 
 instance Ord DL where x <= y = poi x <= poi y
 
-canDiag :: Eq a => [a] -> [a] -> Int -> Int -> (Int, Int) -> Bool
-canDiag as bs lena lenb =
-    safeGet $ array ( (0, 0) , (lena-1, lenb-1) )
-      [( (i, j), a'==b' ) | (a',i) <- zip as [0..], (b',j) <- zip bs [0..]]
-    where
-      safeGet :: UArray (Int, Int) Bool -> (Int, Int) -> Bool
-      safeGet ar ind@(i,j) = if i < lena && j < lenb then ar ! ind else False
+canDiag :: (Eq a)  => [a] -> [a] -> Int -> Int -> (Int, Int) -> Bool
+canDiag as bs lena lenb = \(i,j) ->
+   if i < lena && j < lenb then arAs ! i == arBs ! j else False
+    where arAs = listArray (0,lena - 1) as
+          arBs = listArray (0,lenb - 1) bs
 
 chunk :: Int -> [a] -> [[a]]
 chunk x = unfoldr (\a -> case splitAt x a of ([],[]) -> Nothing; a' -> Just a')
@@ -49,7 +47,7 @@ dstep cd dls = map maximum $ [hd]:(chunk 2 rst)
                           addsnake cd $ dl {poj=poj dl + 1, path=(S : pdl)}]
 
 addsnake :: ((Int,Int)->Bool) -> DL -> DL
-addsnake cd dl 
+addsnake cd dl
     | cd (pi, pj) = addsnake cd $
                    dl {poi = pi + 1, poj = pj + 1, path=(B : path dl)}
     | otherwise   = dl
@@ -75,4 +73,4 @@ getDiff a b = markup a b . reverse $ lcs a b
 -- between them, grouped into chunks.
 getGroupedDiff :: (Eq t) => [t] -> [t] -> [(DI, [t])]
 getGroupedDiff a b = map go . groupBy (\x y -> fst x == fst y) $ getDiff a b
-    where go ((d,x) : xs) = (d, x : map snd xs) 
+    where go ((d,x) : xs) = (d, x : map snd xs)
