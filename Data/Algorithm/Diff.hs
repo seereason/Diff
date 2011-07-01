@@ -30,13 +30,13 @@ data DL = DL {poi :: !Int, poj :: !Int, path::[DI]} deriving (Show, Eq)
 
 instance Ord DL where x <= y = poi x <= poi y
 
-canDiag :: (Eq a)  => [a] -> [a] -> Int -> Int -> (Int, Int) -> Bool
-canDiag as bs lena lenb = \(i,j) ->
+canDiag :: (Eq a)  => [a] -> [a] -> Int -> Int -> Int -> Int -> Bool
+canDiag as bs lena lenb i j =
    if i < lena && j < lenb then arAs ! i == arBs ! j else False
     where arAs = listArray (0,lena - 1) as
           arBs = listArray (0,lenb - 1) bs
 
-dstep :: ((Int,Int)->Bool) -> [DL] -> [DL]
+dstep :: (Int -> Int -> Bool) -> [DL] -> [DL]
 dstep cd dls = hd:pairMaxes rst
   where (hd:rst) = nextDLs dls
         nextDLs [] = []
@@ -48,10 +48,10 @@ dstep cd dls = hd:pairMaxes rst
         pairMaxes [x] = [x]
         pairMaxes (x:y:rest) = max x y:pairMaxes rest
 
-addsnake :: ((Int,Int)->Bool) -> DL -> DL
+addsnake :: (Int -> Int -> Bool) -> DL -> DL
 addsnake cd dl
-    | cd (pi, pj) = addsnake cd $
-                   dl {poi = pi + 1, poj = pj + 1, path=(B : path dl)}
+    | cd pi pj = addsnake cd $
+                 dl {poi = pi + 1, poj = pj + 1, path=(B : path dl)}
     | otherwise   = dl
     where pi = poi dl; pj = poj dl
 
