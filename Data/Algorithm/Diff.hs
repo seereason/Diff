@@ -36,15 +36,17 @@ canDiag as bs lena lenb = \(i,j) ->
     where arAs = listArray (0,lena - 1) as
           arBs = listArray (0,lenb - 1) bs
 
-chunk :: Int -> [a] -> [[a]]
-chunk x = unfoldr (\a -> case splitAt x a of ([],[]) -> Nothing; a' -> Just a')
-
 dstep :: ((Int,Int)->Bool) -> [DL] -> [DL]
-dstep cd dls = map maximum $ [hd]:(chunk 2 rst)
-    where (hd:rst)  = concatMap extend dls
-          extend dl = let pdl = path dl
-                      in [addsnake cd $ dl {poi=poi dl + 1, path=(F : pdl)},
-                          addsnake cd $ dl {poj=poj dl + 1, path=(S : pdl)}]
+dstep cd dls = hd:pairMaxes rst
+  where (hd:rst) = nextDLs dls
+        nextDLs [] = []
+        nextDLs (dl:rest) = dl':dl'':nextDLs rest
+          where dl'  = addsnake cd $ dl {poi=poi dl + 1, path=(F : pdl)}
+                dl'' = addsnake cd $ dl {poj=poj dl + 1, path=(S : pdl)}
+                pdl = path dl
+        pairMaxes [] = []
+        pairMaxes [x] = [x]
+        pairMaxes (x:y:rest) = max x y:pairMaxes rest
 
 addsnake :: ((Int,Int)->Bool) -> DL -> DL
 addsnake cd dl
