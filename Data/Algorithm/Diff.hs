@@ -26,7 +26,7 @@ import Data.List
 -- or from Both.
 data DI = F | S | B deriving (Show, Eq)
 
-data DL = DL {poi::Int, poj::Int, path::[DI]} deriving (Show, Eq)
+data DL = DL {poi :: !Int, poj :: !Int, path::[DI]} deriving (Show, Eq)
 
 instance Ord DL where x <= y = poi x <= poi y
 
