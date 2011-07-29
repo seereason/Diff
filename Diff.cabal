@@ -16,9 +16,9 @@ flag small-base
 
 library
   if flag(small-base)
-    build-depends:     base >= 3, array
+    build-depends:     base >= 3 && <= 5, array
   else
-    build-depends:     base < 3
+    build-depends:     base < 3 
   exposed-modules:   Data.Algorithm.Diff
   ghc-options:       -O2 -Wall -funbox-strict-fields
 
