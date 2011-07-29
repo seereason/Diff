@@ -1,5 +1,5 @@
 name:                Diff
-version:             0.1.2.4
+version:             0.1.3
 synopsis:            O(ND) diff algorithm in haskell.
 description:         Basic implementation of the standard diff algorithm.
 category:            Algorithms
@@ -21,3 +21,7 @@ library
     build-depends:     base < 3
   exposed-modules:   Data.Algorithm.Diff
   ghc-options:       -O2 -Wall -funbox-strict-fields
+
+source-repository head
+  type:      darcs
+  location:  http://patch-tag.com/r/sclv/diff

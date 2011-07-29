@@ -1,7 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Algorithm.Diff
--- Copyright   :  (c) Sterling Clover 2008
+-- Copyright   :  (c) Sterling Clover 2008-2011, Kevin Charter 2011
 -- License     :  BSD 3 Clause
 -- Maintainer  :  s.clover@gmail.com
 -- Stability   :  experimental
@@ -30,9 +30,9 @@ data DL = DL {poi :: !Int, poj :: !Int, path::[DI]} deriving (Show, Eq)
 
 instance Ord DL where x <= y = poi x <= poi y
 
-canDiag :: (Eq a)  => [a] -> [a] -> Int -> Int -> Int -> Int -> Bool
-canDiag as bs lena lenb i j =
-   if i < lena && j < lenb then arAs ! i == arBs ! j else False
+canDiag :: (a -> a -> Bool) -> [a] -> [a] -> Int -> Int -> Int -> Int -> Bool
+canDiag eq as bs lena lenb i j =
+   if i < lena && j < lenb then (arAs ! i) `eq` (arBs ! j) else False
     where arAs = listArray (0,lena - 1) as
           arBs = listArray (0,lenb - 1) bs
 
@@ -55,24 +55,33 @@ addsnake cd dl
     | otherwise   = dl
     where pi = poi dl; pj = poj dl
 
-lcs :: (Eq a) => [a] -> [a] -> [DI]
-lcs as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
+lcs :: (a -> a -> Bool) -> [a] -> [a] -> [DI]
+lcs eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
             concat . iterate (dstep cd) . (:[]) . addsnake cd $
             DL {poi=0,poj=0,path=[]}
-            where cd = canDiag as bs lena lenb
+            where cd = canDiag eq as bs lena lenb
                   lena = length as; lenb = length bs
 
 -- | Takes two lists and returns a list indicating the differences
 -- between them.
 getDiff :: (Eq t) => [t] -> [t] -> [(DI, t)]
-getDiff a b = markup a b . reverse $ lcs a b
+getDiff = getDiffBy (==) 
+
+-- | Takes two lists and returns a list indicating the differences
+-- between them, grouped into chunks.
+getGroupedDiff :: (Eq t) => [t] -> [t] -> [(DI, [t])]
+getGroupedDiff = getGroupedDiffBy (==)
+
+-- | generalized `getDiff`
+getDiffBy :: (t -> t -> Bool) -> [t] -> [t] -> [(DI, t)]
+getDiffBy eq a b = markup a b . reverse $ lcs eq a b
     where markup (x:xs)   ys   (F:ds) = (F, x) : markup xs ys ds
           markup   xs   (y:ys) (S:ds) = (S, y) : markup xs ys ds
           markup (x:xs) (_:ys) (B:ds) = (B, x) : markup xs ys ds
           markup _ _ _ = []
 
--- | Takes two lists and returns a list indicating the differences
--- between them, grouped into chunks.
-getGroupedDiff :: (Eq t) => [t] -> [t] -> [(DI, [t])]
-getGroupedDiff a b = map go . groupBy (\x y -> fst x == fst y) $ getDiff a b
+-- | generalized `getGroupedDiff`
+getGroupedDiffBy eq a b = map go . groupBy (\x y -> fst x == fst y) $ getDiffBy eq a b
     where go ((d,x) : xs) = (d, x : map snd xs)
+
+
