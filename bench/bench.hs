@@ -6,7 +6,8 @@ import System.Random
 
 import Data.Algorithm.Diff
 
-instance NFData DI
+instance NFData (Diff a) where
+    
 
 main :: IO ()
 main = doBenchMarks 37
