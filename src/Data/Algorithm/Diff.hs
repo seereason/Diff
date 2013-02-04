@@ -41,7 +41,7 @@ data DL = DL {poi :: !Int, poj :: !Int, path::[DI]} deriving (Show, Eq)
 instance Ord DL where x <= y = poi x <= poi y
 
 canDiag :: (a -> a -> Bool) -> [a] -> [a] -> Int -> Int -> Int -> Int -> Bool
-canDiag eq as bs lena lenb i j =
+canDiag eq as bs lena lenb = \ i j ->
    if i < lena && j < lenb then (arAs ! i) `eq` (arBs ! j) else False
     where arAs = listArray (0,lena - 1) as
           arBs = listArray (0,lenb - 1) bs
@@ -95,10 +95,10 @@ getGroupedDiffBy :: (t -> t -> Bool) -> [t] -> [t] -> [Diff [t]]
 getGroupedDiffBy eq a b = go $ getDiffBy eq a b
     where go (First x  : xs) = let (fs, rest) = goFirsts  xs in First  (x:fs)     : go rest
           go (Second x : xs) = let (fs, rest) = goSeconds xs in Second (x:fs)     : go rest
-          go (Both x y : xs) = let (fs, rest) = goBoth    xs 
+          go (Both x y : xs) = let (fs, rest) = goBoth    xs
                                    (fxs, fys) = unzip fs
                                in Both (x:fxs) (y:fys) : go rest
-          go [] = []                                  
+          go [] = []
 
           goFirsts  (First x  : xs) = let (fs, rest) = goFirsts  xs in (x:fs, rest)
           goFirsts  xs = ([],xs)
