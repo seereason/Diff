@@ -125,12 +125,12 @@ shortLists = sized $ \n -> resize (min n 12) $ listOf arbitrary
 forAll2 :: (Show a, Testable prop) => Gen a -> (a -> a -> prop) -> Property
 forAll2 gen f = forAll gen $ \x -> forAll gen (f x)
 
-prop_ppDiffEqual xs=ppDiff xs xs=="\n"
+prop_ppDiffEqual xs=ppDiff (getGroupedDiff xs xs)=="\n"
 
 -- | truly random tests
 prop_ppDiffR :: DiffInput -> Property
 prop_ppDiffR (DiffInput le ri) =
-    let haskDiff=ppDiff le ri
+    let haskDiff=ppDiff $ getGroupedDiff le ri
         utilDiff= unsafePerformIO (runDiff (unlines le) (unlines ri))
     in  classify (haskDiff == utilDiff) "exact match"    
             (div ((length haskDiff)*100) (length utilDiff) < 110) -- less than 10% bigger

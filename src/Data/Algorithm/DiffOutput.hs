@@ -16,11 +16,10 @@ import Data.Algorithm.Diff
 
 import Text.PrettyPrint
 
--- | pretty print the difference between the two arguments
-ppDiff :: [String] -> [String] -> String
-ppDiff left right =
-   let  gdiff=getGroupedDiff left right
-        diffLineRanges = toLineRange 1 1 gdiff
+-- | pretty print the differences. The output is similar to the output of the diff utility
+ppDiff :: [Diff [String]] -> String
+ppDiff gdiff =
+   let  diffLineRanges = toLineRange 1 1 gdiff
    in   
         render (prettyDiffs diffLineRanges) ++ "\n"
    where
@@ -47,8 +46,8 @@ ppDiff left right =
                 in Change (LineRange (leftLine,leftLine+linesF-1) lsF) (LineRange (rightLine,rightLine+linesS-1) lsS)
                         : toLineRange (leftLine+linesF) (rightLine+linesS) rs
                 
-                
-prettyDiffs :: [DiffOperation (LineRange)] -> Doc
+-- | pretty print of diff operations                
+prettyDiffs :: [DiffOperation LineRange] -> Doc
 prettyDiffs [] = empty
 prettyDiffs (d : rest) = prettyDiff d $$ prettyDiffs rest
     where
