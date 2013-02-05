@@ -18,9 +18,9 @@ library
   if flag(small-base)
     build-depends:     base >= 3 && <= 6, array
   else
-    build-depends:     base < 3 
+    build-depends:     base < 3
   hs-source-dirs:    src
-  exposed-modules:   
+  exposed-modules:
                      Data.Algorithm.Diff,
                      Data.Algorithm.DiffOutput
   ghc-options:       -O2 -Wall -funbox-strict-fields
@@ -32,13 +32,7 @@ test-suite properties
   type:           exitcode-stdio-1.0
 
   build-depends:
-    QuickCheck     >= 2.4,
-    test-framework >= 0.4,
-    test-framework-quickcheck2 >= 0.2,
-    pretty,
-    process,
-    directory
-  other-modules:  Data.Algorithm.DiffOutput
+   QuickCheck >= 2.4, test-framework >= 0.4, test-framework-quickcheck2 >= 0.2, process, directory
 
 source-repository head
   type:      darcs

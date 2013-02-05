@@ -20,14 +20,14 @@ import Text.PrettyPrint
 ppDiff :: [Diff [String]] -> String
 ppDiff gdiff =
    let  diffLineRanges = toLineRange 1 1 gdiff
-   in   
+   in
         render (prettyDiffs diffLineRanges) ++ "\n"
    where
           toLineRange :: Int -> Int -> [Diff [String]] -> [DiffOperation LineRange]
           toLineRange _ _ []=[]
           toLineRange leftLine rightLine (Both ls _:rs)=
                 let lins=length ls
-                in toLineRange (leftLine+lins) (rightLine+lins) rs
+                in  toLineRange (leftLine+lins) (rightLine+lins) rs
           toLineRange leftLine rightLine (Second lsS:First lsF:rs)=
                 toChange leftLine rightLine lsF lsS rs
           toLineRange leftLine rightLine (First lsF:Second lsS:rs)=
@@ -35,18 +35,18 @@ ppDiff gdiff =
           toLineRange leftLine rightLine (Second lsS:rs)=
                 let linesS=length lsS
                     diff=Addition (LineRange (rightLine,rightLine+linesS-1) lsS) (leftLine-1)
-                in diff : toLineRange leftLine (rightLine+linesS) rs      
+                in  diff : toLineRange leftLine (rightLine+linesS) rs
           toLineRange leftLine rightLine  (First lsF:rs)=
                 let linesF=length lsF
                     diff=Deletion (LineRange (leftLine,leftLine+linesF-1) lsF) (rightLine-1)
-                in diff: toLineRange(leftLine+linesF) rightLine rs
+                in  diff: toLineRange(leftLine+linesF) rightLine rs
           toChange leftLine rightLine lsF lsS rs=
                 let linesS=length lsS
                     linesF=length lsF
-                in Change (LineRange (leftLine,leftLine+linesF-1) lsF) (LineRange (rightLine,rightLine+linesS-1) lsS)
+                in  Change (LineRange (leftLine,leftLine+linesF-1) lsF) (LineRange (rightLine,rightLine+linesS-1) lsS)
                         : toLineRange (leftLine+linesF) (rightLine+linesS) rs
-                
--- | pretty print of diff operations                
+
+-- | pretty print of diff operations
 prettyDiffs :: [DiffOperation LineRange] -> Doc
 prettyDiffs [] = empty
 prettyDiffs (d : rest) = prettyDiff d $$ prettyDiffs rest
@@ -65,8 +65,8 @@ prettyDiffs (d : rest) = prettyDiff d $$ prettyDiffs rest
       prettyRange (start, end) =
           if start == end then int start else int start <> comma <> int end
       prettyLines start lins =
-          vcat (map (\l -> char start <+> text l) lins)                
-                
+          vcat (map (\l -> char start <+> text l) lins)
+
 type LineNo = Int
 
 data LineRange = LineRange { lrNumbers :: (LineNo, LineNo)
@@ -77,4 +77,4 @@ data LineRange = LineRange { lrNumbers :: (LineNo, LineNo)
 data DiffOperation a = Deletion a LineNo
             | Addition a LineNo
             | Change a a
-            deriving (Show)                
+            deriving (Show)
