@@ -4,6 +4,16 @@ import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 import Data.Algorithm.Diff
+import Data.Algorithm.DiffOutput
+
+import System.IO
+import System.Exit
+import System.IO.Unsafe (unsafePerformIO)
+import Debug.Trace (trace)
+import System.Environment (getArgs)
+import Data.Maybe (mapMaybe, catMaybes)
+import System.Process (readProcessWithExitCode)
+import System.Directory (getTemporaryDirectory)
 
 
 main :: IO ()
@@ -21,6 +31,11 @@ main = defaultMain [ testGroup "sub props" [
                         slTest2 "recover first" prop_recoverFirst,
                         slTest2 "recover second" prop_recoverSecond,
                         slTest2 "lcs" prop_lcs
+                     ],
+                     testGroup "output props" [
+                        testProperty "self generates empty" $ forAll shortLists  prop_ppDiffEqual,
+                        --testProperty "compare our lists with diff" $ forAll2 shortLists  prop_ppDiffShort,
+                        testProperty "compare random with diff" prop_ppDiffR
                      ]
                    ]
 
@@ -110,3 +125,58 @@ shortLists = sized $ \n -> resize (min n 12) $ listOf arbitrary
 forAll2 :: (Show a, Testable prop) => Gen a -> (a -> a -> prop) -> Property
 forAll2 gen f = forAll gen $ \x -> forAll gen (f x)
 
+prop_ppDiffEqual xs=ppDiff xs xs=="\n"
+
+-- | truly random tests
+prop_ppDiffR :: DiffInput -> Property
+prop_ppDiffR (DiffInput le ri) =
+    let haskDiff=ppDiff le ri
+        utilDiff= unsafePerformIO (runDiff (unlines le) (unlines ri))
+    in  classify (haskDiff == utilDiff) "exact match"    
+            (div ((length haskDiff)*100) (length utilDiff) < 110) -- less than 10% bigger
+    where
+      runDiff left right =
+          do leftFile <- writeTemp left
+             rightFile <- writeTemp right
+             (ecode, out, err) <-
+                 readProcessWithExitCode "diff" [leftFile, rightFile] ""
+             -- putStrLn ("OUT:\n" ++ out)
+             -- putStrLn ("ERR:\n" ++ err)
+             -- putStrLn ("ECODE:\n" ++ show ecode)
+             case ecode of
+               ExitSuccess -> return out
+               ExitFailure 1 -> return out
+               ExitFailure i -> error ("'diff " ++ leftFile ++ " " ++ rightFile ++
+                                       "' failed with exit code " ++ show i ++
+                                       ": " ++ show err)
+      writeTemp s =
+          do dir <- getTemporaryDirectory
+             (fp, h) <- openTempFile dir "HTF-diff.txt"
+             hPutStr h s
+             hClose h
+             return fp
+
+
+data DiffInput = DiffInput { diLeft :: [String], diRight :: [String] }
+               deriving (Show)
+
+leftDiffInput = ["1", "2", "3", "4", "", "5", "6", "7"]
+
+instance Arbitrary DiffInput where
+    arbitrary =
+        do let leftLines = leftDiffInput
+           rightLinesLines <- mapM modifyLine (leftLines ++ [""])
+           return $ DiffInput leftLines
+                              (concat rightLinesLines)
+      where
+        randomString =
+            do c <- elements ['a' .. 'z']
+               return [c]
+        modifyLine :: String -> Gen [String]
+        modifyLine str =
+            do prefixLen <- frequency [(20-i, return i) | i <- [0..5]]
+               prefix <- mapM (const randomString) [1..prefixLen]
+               frequency [ (5, return (prefix ++ [str]))
+                         , (3, return (prefix ++ ["XXX" ++ str]))
+                         , (2, return prefix)
+                         , (2, return [str])]
