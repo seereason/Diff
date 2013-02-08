@@ -132,8 +132,9 @@ prop_ppDiffR :: DiffInput -> Property
 prop_ppDiffR (DiffInput le ri) =
     let haskDiff=ppDiff $ getGroupedDiff le ri
         utilDiff= unsafePerformIO (runDiff (unlines le) (unlines ri))
-    in  classify (haskDiff == utilDiff) "exact match"    
-            (div ((length haskDiff)*100) (length utilDiff) < 110) -- less than 10% bigger
+    in  cover (haskDiff == utilDiff) 90 "exact match" $ 
+                classify (haskDiff == utilDiff) "exact match"    
+                        (div ((length haskDiff)*100) (length utilDiff) < 110) -- less than 10% bigger
     where
       runDiff left right =
           do leftFile <- writeTemp left
