@@ -36,4 +36,4 @@ test-suite properties
 
 source-repository head
   type:      darcs
-  location:  http://patch-tag.com/r/sclv/diff
+  location:  http://hub.darcs.net/sterlingclover/Diff
