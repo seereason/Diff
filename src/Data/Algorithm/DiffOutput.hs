@@ -11,9 +11,7 @@
 -- Generates a string output that is similar to diff normal mode
 -----------------------------------------------------------------------------
 module Data.Algorithm.DiffOutput where
-
 import Data.Algorithm.Diff
-
 import Text.PrettyPrint
 
 -- | pretty print the differences. The output is similar to the output of the diff utility
