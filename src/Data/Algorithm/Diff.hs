@@ -38,7 +38,7 @@ data Diff a = First a | Second a | Both a a deriving (Show, Eq)
 
 data DL = DL {poi :: !Int, poj :: !Int, path::[DI]} deriving (Show, Eq)
 
-instance Ord DL 
+instance Ord DL
         where x <= y = if poi x == poi y
                 then  poj x > poj y
                 else poi x <= poi y
