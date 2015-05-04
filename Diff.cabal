@@ -9,10 +9,7 @@ author:              Sterling Clover
 maintainer:          s.clover@gmail.com
 Tested-With:         GHC == 7.8.4
 Build-Type:          Simple
-build-Depends:       base
 Cabal-Version:       >= 1.6
-
-flag small-base
 
 library
   build-depends:   base >= 3 && <= 6, array, pretty
@@ -22,14 +19,6 @@ library
                    Data.Algorithm.DiffOutput
                    Data.Algorithm.DiffContext
   ghc-options:     -O2 -Wall -funbox-strict-fields
-
--- test-suite properties
---   hs-source-dirs: src, test
---   main-is:        Test.hs
---   type:           exitcode-stdio-1.0
-
---   build-depends:
---    QuickCheck >= 2.4, test-framework >= 0.4, test-framework-quickcheck2 >= 0.2, process, directory
 
 source-repository head
   type:      darcs
