@@ -13,6 +13,7 @@
 module Data.Algorithm.DiffOutput where
 import Data.Algorithm.Diff
 import Text.PrettyPrint
+import Data.Monoid (mappend)
 
 -- | pretty print the differences. The output is similar to the output of the diff utility
 ppDiff :: [Diff [String]] -> String
@@ -50,18 +51,18 @@ prettyDiffs [] = empty
 prettyDiffs (d : rest) = prettyDiff d $$ prettyDiffs rest
     where
       prettyDiff (Deletion inLeft lineNoRight) =
-          prettyRange (lrNumbers inLeft) <> char 'd' <> int lineNoRight $$
+          prettyRange (lrNumbers inLeft) `mappend` char 'd' `mappend` int lineNoRight $$
           prettyLines '<' (lrContents inLeft)
       prettyDiff (Addition inRight lineNoLeft) =
-          int lineNoLeft <> char 'a' <> prettyRange (lrNumbers inRight) $$
+          int lineNoLeft `mappend` char 'a' `mappend` prettyRange (lrNumbers inRight) $$
           prettyLines '>' (lrContents inRight)
       prettyDiff (Change inLeft inRight) =
-          prettyRange (lrNumbers inLeft) <> char 'c' <> prettyRange (lrNumbers inRight) $$
+          prettyRange (lrNumbers inLeft) `mappend` char 'c' `mappend` prettyRange (lrNumbers inRight) $$
           prettyLines '<' (lrContents inLeft) $$
           text "---" $$
           prettyLines '>' (lrContents inRight)
       prettyRange (start, end) =
-          if start == end then int start else int start <> comma <> int end
+          if start == end then int start else int start `mappend` comma `mappend` int end
       prettyLines start lins =
           vcat (map (\l -> char start <+> text l) lins)
 

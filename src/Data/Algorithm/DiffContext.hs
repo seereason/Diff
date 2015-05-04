@@ -17,7 +17,7 @@ module Data.Algorithm.DiffContext
 
 import Data.Algorithm.Diff (Diff(..), getGroupedDiff)
 import Data.List (groupBy)
-import Data.Monoid ((<>))
+import Data.Monoid (mappend)
 import Text.PrettyPrint (Doc, text, empty, hcat)
 
 type ContextDiff c = [[Diff [c]]]
@@ -69,8 +69,8 @@ prettyContextDiff ::
     -> Doc
 prettyContextDiff _ _ _ [] = empty
 prettyContextDiff old new prettyElem hunks =
-    hcat . map (<> text "\n") $ (text "--- " <> old :
-                                 text "+++ " <> new :
+    hcat . map (`mappend` text "\n") $ (text "--- " `mappend` old :
+                                 text "+++ " `mappend` new :
                                  concatMap prettyRun hunks)
     where
       -- Pretty print a run of adjacent changes
@@ -78,6 +78,6 @@ prettyContextDiff old new prettyElem hunks =
           text "@@" : concatMap prettyChange hunk
 
       -- Pretty print a single change (e.g. one line of a text file)
-      prettyChange (Both ts _) = map (\ l -> text " " <> prettyElem l) ts
-      prettyChange (First ts)  = map (\ l -> text "-" <> prettyElem l) ts
-      prettyChange (Second ts) = map (\ l -> text "+" <> prettyElem l) ts
+      prettyChange (Both ts _) = map (\ l -> text " " `mappend` prettyElem l) ts
+      prettyChange (First ts)  = map (\ l -> text "-" `mappend` prettyElem l) ts
+      prettyChange (Second ts) = map (\ l -> text "+" `mappend` prettyElem l) ts
