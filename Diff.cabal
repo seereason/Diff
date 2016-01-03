@@ -23,3 +23,12 @@ library
 source-repository head
   type:      darcs
   location:  http://hub.darcs.net/sterlingclover/Diff
+
+test-suite diff-tests
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test, src
+  main-is: Test.hs
+  build-depends: base >= 3 && <= 6, array
+                , pretty, QuickCheck, test-framework
+                , test-framework-quickcheck2, process
+                , directory

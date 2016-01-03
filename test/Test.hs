@@ -5,6 +5,7 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 import Data.Algorithm.Diff
 import Data.Algorithm.DiffOutput
+import Text.PrettyPrint
 
 import System.IO
 import System.Exit
@@ -35,7 +36,8 @@ main = defaultMain [ testGroup "sub props" [
                      testGroup "output props" [
                         testProperty "self generates empty" $ forAll shortLists  prop_ppDiffEqual,
                         --testProperty "compare our lists with diff" $ forAll2 shortLists  prop_ppDiffShort,
-                        testProperty "compare random with diff" prop_ppDiffR
+                        testProperty "compare random with diff" prop_ppDiffR,
+                        testProperty "test parse" prop_parse
                      ]
                    ]
 
@@ -132,8 +134,8 @@ prop_ppDiffR :: DiffInput -> Property
 prop_ppDiffR (DiffInput le ri) =
     let haskDiff=ppDiff $ getGroupedDiff le ri
         utilDiff= unsafePerformIO (runDiff (unlines le) (unlines ri))
-    in  cover (haskDiff == utilDiff) 90 "exact match" $ 
-                classify (haskDiff == utilDiff) "exact match"    
+    in  cover (haskDiff == utilDiff) 90 "exact match" $
+                classify (haskDiff == utilDiff) "exact match"
                         (div ((length haskDiff)*100) (length utilDiff) < 110) -- less than 10% bigger
     where
       runDiff left right =
@@ -157,6 +159,13 @@ prop_ppDiffR (DiffInput le ri) =
              hClose h
              return fp
 
+-- | Check pretty printed DiffOperations can be parsed again
+prop_parse :: DiffInput -> Bool
+prop_parse (DiffInput le ri) =
+    let difflrs = diffToLineRanges $ getGroupedDiff le ri
+        output = render (prettyDiffs difflrs) ++ "\n"
+        parsed = parsePrettyDiffs output
+    in difflrs == parsed
 
 data DiffInput = DiffInput { diLeft :: [String], diRight :: [String] }
                deriving (Show)
