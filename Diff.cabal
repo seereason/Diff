@@ -12,7 +12,7 @@ Build-Type:          Simple
 Cabal-Version:       >= 1.6
 
 library
-  build-depends:   base >= 3 && <= 6, array, pretty
+  build-depends:   base >= 3 && <= 6, array, pretty >= 1.1
   hs-source-dirs:  src
   exposed-modules:
                    Data.Algorithm.Diff,
