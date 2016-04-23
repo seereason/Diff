@@ -1,5 +1,5 @@
 name:                Diff
-version:             0.3.3
+version:             0.3.4
 synopsis:            O(ND) diff algorithm in haskell.
 description:         Implementation of the standard diff algorithm, and utilities for pretty printing.
 category:            Algorithms

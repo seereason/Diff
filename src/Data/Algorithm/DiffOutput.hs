@@ -15,6 +15,7 @@ import Data.Algorithm.Diff
 import Text.PrettyPrint
 import Data.Char
 import Data.List
+import Data.Monoid (mappend)
 
 -- | Converts Diffs to DiffOperations
 diffToLineRanges :: [Diff [String]] -> [DiffOperation LineRange]
