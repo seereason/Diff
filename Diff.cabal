@@ -21,8 +21,8 @@ library
   ghc-options:     -O2 -Wall -funbox-strict-fields
 
 source-repository head
-  type:      darcs
-  location:  http://hub.darcs.net/sterlingclover/Diff
+  type:      git
+  location:  http://github.com/seereason/Diff
 
 test-suite diff-tests
   type: exitcode-stdio-1.0
