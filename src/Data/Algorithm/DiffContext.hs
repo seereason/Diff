@@ -22,43 +22,42 @@ import Text.PrettyPrint (Doc, text, empty, hcat)
 
 type ContextDiff c = [[Diff [c]]]
 
+-- | See https://github.com/haskell/containers/issues/424
+groupBy' :: (a -> a -> Bool) -> [a] -> [[a]]
+groupBy' eq (x : xs) = go [x] xs
+    where
+      go (x : xs) (y : zs) | eq x y = go (y : x : xs) zs
+      go g (y : zs) = reverse g : go [y] zs
+      go g [] = [reverse g]
+
 -- | Do a grouped diff and then split up the chunks into runs that
 -- contain differences surrounded by N lines of unchanged text.  If
 -- there is less then 2N+1 lines of unchanged text between two
 -- changes, the runs are left merged.
 getContextDiff :: Eq a => Int -> [a] -> [a] -> ContextDiff a
 getContextDiff context a b =
-    group $ swap $ trimTail $ trimHead $ concatMap split $ getGroupedDiff a b
+    groupBy' (\a b -> not (isBoth a && isBoth b)) $ doPrefix $ getGroupedDiff a b
     where
-      -- Drop the middle elements of a run of Both if there are more
-      -- than enough to form the context of the preceding changes and
-      -- the following changes.
-      split (Both xs ys) =
-          case length xs of
-            n | n > (2 * context) -> [Both (take context xs) (take context ys), Both (drop (n - context) xs) (drop (n - context) ys)]
-            _ -> [Both xs ys]
-      split x = [x]
-      -- If split created a pair of Both runs at the beginning or end
-      -- of the diff, remove the outermost.
-      trimHead [] = []
-      trimHead [Both _ _] = []
-      trimHead [Both _ _, Both _ _] = []
-      trimHead (Both _ _ : x@(Both _ _) : more) = x : more
-      trimHead xs = trimTail xs
-      trimTail [x@(Both _ _), Both _ _] = [x]
-      trimTail (x : more) = x : trimTail more
-      trimTail [] = []
-      -- If we see Second before First swap them so that the deletions
-      -- appear before the additions.
-      swap (x@(Second _) : y@(First _) : xs) = y : x : swap xs
-      swap (x : xs) = x : swap xs
-      swap [] = []
-      -- Split the list wherever we see adjacent Both constructors
-      group xs =
-          groupBy (\ x y -> not (isBoth x && isBoth y)) xs
-          where
-            isBoth (Both _ _) = True
-            isBoth _ = False
+      isBoth (Both {}) = True
+      isBoth _ = False
+      -- Handle the common text leading up to a diff.
+      doPrefix [] = []
+      doPrefix [Both _ _] = []
+      doPrefix (Both xs ys : more) =
+          Both (drop (max 0 (length xs - context)) xs)
+               (drop (max 0 (length ys - context)) ys) : doSuffix more
+      -- Prefix finished, do the diff then the following suffix
+      doPrefix (d : ds) = doSuffix (d : ds)
+      -- Handle the common text following a diff.
+      doSuffix [] = []
+      doSuffix [Both xs ys] = [Both (take context xs) (take context ys)]
+      doSuffix (Both xs ys : more)
+          | length xs <= context * 2 =
+              Both xs ys : doPrefix more
+      doSuffix (Both xs ys : more) =
+          Both (take context xs) (take context ys)
+                   : doPrefix (Both (drop context xs) (drop context ys) : more)
+      doSuffix (d : ds) = d : doSuffix ds
 
 -- | Pretty print a ContextDiff in the manner of diff -u.
 prettyContextDiff ::

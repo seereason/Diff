@@ -4,6 +4,7 @@ import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 import Data.Algorithm.Diff
+import Data.Algorithm.DiffContext
 import Data.Algorithm.DiffOutput
 import Text.PrettyPrint
 
@@ -37,7 +38,8 @@ main = defaultMain [ testGroup "sub props" [
                         testProperty "self generates empty" $ forAll shortLists  prop_ppDiffEqual,
                         --testProperty "compare our lists with diff" $ forAll2 shortLists  prop_ppDiffShort,
                         testProperty "compare random with diff" prop_ppDiffR,
-                        testProperty "test parse" prop_parse
+                        testProperty "test parse" prop_parse,
+                        testProperty "test context" prop_context_diff
                      ]
                    ]
 
@@ -190,3 +192,16 @@ instance Arbitrary DiffInput where
                          , (3, return (prefix ++ ["XXX" ++ str]))
                          , (2, return prefix)
                          , (2, return [str])]
+
+-- | FIXME - make a real quickcheck property
+prop_context_diff :: Bool
+prop_context_diff =
+    expected == actual
+    where
+      expected = [[Both ["a","b"] ["a","b"],
+                   First ["c"],
+                   Both ["d","e"] ["d","e"]],
+                  [Both ["i","j"] ["i","j"],First ["k"]]]
+      actual = getContextDiff 2 (lines textA) (lines textB)
+      textA = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\n"
+      textB = "a\nb\nd\ne\nf\ng\nh\ni\nj\n"
