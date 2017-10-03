@@ -24,6 +24,7 @@ type ContextDiff c = [[Diff [c]]]
 
 -- | See https://github.com/haskell/containers/issues/424
 groupBy' :: (a -> a -> Bool) -> [a] -> [[a]]
+groupBy' _ [] = []
 groupBy' eq (x : xs) = go [x] xs
     where
       go (x : xs) (y : zs) | eq x y = go (y : x : xs) zs
