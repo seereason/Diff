@@ -1,5 +1,5 @@
 name:                Diff
-version:             0.3.5
+version:             0.4.0
 synopsis:            O(ND) diff algorithm in haskell.
 description:         Implementation of the standard diff algorithm, and utilities for pretty printing.
 category:            Algorithms
@@ -32,3 +32,7 @@ test-suite diff-tests
                 , pretty, QuickCheck, test-framework
                 , test-framework-quickcheck2, process
                 , directory
+  other-modules:
+                   Data.Algorithm.Diff,
+                   Data.Algorithm.DiffOutput
+                   Data.Algorithm.DiffContext

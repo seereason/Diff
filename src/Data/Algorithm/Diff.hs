@@ -14,7 +14,7 @@
 -----------------------------------------------------------------------------
 
 module Data.Algorithm.Diff
-    ( Diff(..)
+    ( Diff, PolyDiff(..)
     -- * Comparing lists for differences
     , getDiff
     , getDiffBy
@@ -26,7 +26,7 @@ module Data.Algorithm.Diff
 
 import Prelude hiding (pi)
 
-import Data.Array
+import Data.Array (listArray, (!))
 
 data DI = F | S | B deriving (Show, Eq)
 
@@ -34,7 +34,11 @@ data DI = F | S | B deriving (Show, Eq)
 -- 'Both' contains both the left and right values, in case you are using a form
 -- of equality that doesn't check all data (for example, if you are using a
 -- newtype to only perform equality on side of a tuple).
-data Diff a = First a | Second a | Both a a deriving (Show, Eq)
+data PolyDiff a b = First a | Second b | Both a b
+    deriving (Show, Eq)
+
+-- | This is 'PolyDiff' specialized so both sides are the same type.
+type Diff a = PolyDiff a a
 
 data DL = DL {poi :: !Int, poj :: !Int, path::[DI]} deriving (Show, Eq)
 
@@ -43,7 +47,7 @@ instance Ord DL
                 then  poj x > poj y
                 else poi x <= poi y
 
-canDiag :: (a -> a -> Bool) -> [a] -> [a] -> Int -> Int -> Int -> Int -> Bool
+canDiag :: (a -> b -> Bool) -> [a] -> [b] -> Int -> Int -> Int -> Int -> Bool
 canDiag eq as bs lena lenb = \ i j ->
    if i < lena && j < lenb then (arAs ! i) `eq` (arBs ! j) else False
     where arAs = listArray (0,lena - 1) as
@@ -68,7 +72,7 @@ addsnake cd dl
     | otherwise   = dl
     where pi = poi dl; pj = poj dl
 
-lcs :: (a -> a -> Bool) -> [a] -> [a] -> [DI]
+lcs :: (a -> b -> Bool) -> [a] -> [b] -> [DI]
 lcs eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
             concat . iterate (dstep cd) . (:[]) . addsnake cd $
             DL {poi=0,poj=0,path=[]}
@@ -77,24 +81,24 @@ lcs eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb)
 
 -- | Takes two lists and returns a list of differences between them. This is
 -- 'getDiffBy' with '==' used as predicate.
-getDiff :: (Eq t) => [t] -> [t] -> [Diff t]
+getDiff :: (Eq a) => [a] -> [a] -> [Diff a]
 getDiff = getDiffBy (==)
 
 -- | Takes two lists and returns a list of differences between them, grouped
 -- into chunks. This is 'getGroupedDiffBy' with '==' used as predicate.
-getGroupedDiff :: (Eq t) => [t] -> [t] -> [Diff [t]]
+getGroupedDiff :: (Eq a) => [a] -> [a] -> [Diff [a]]
 getGroupedDiff = getGroupedDiffBy (==)
 
 -- | A form of 'getDiff' with no 'Eq' constraint. Instead, an equality predicate
 -- is taken as the first argument.
-getDiffBy :: (t -> t -> Bool) -> [t] -> [t] -> [Diff t]
+getDiffBy :: (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff a b]
 getDiffBy eq a b = markup a b . reverse $ lcs eq a b
     where markup (x:xs)   ys   (F:ds) = First x  : markup xs ys ds
           markup   xs   (y:ys) (S:ds) = Second y : markup xs ys ds
           markup (x:xs) (y:ys) (B:ds) = Both x y : markup xs ys ds
           markup _ _ _ = []
 
-getGroupedDiffBy :: (t -> t -> Bool) -> [t] -> [t] -> [Diff [t]]
+getGroupedDiffBy :: (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff [a] [b]]
 getGroupedDiffBy eq a b = go $ getDiffBy eq a b
     where go (First x  : xs) = let (fs, rest) = goFirsts  xs in First  (x:fs)     : go rest
           go (Second x : xs) = let (fs, rest) = goSeconds xs in Second (x:fs)     : go rest
