@@ -12,6 +12,7 @@
 -----------------------------------------------------------------------------
 module Data.Algorithm.DiffContext
     ( getContextDiff
+    , getContextDiffOld
     , prettyContextDiff
     ) where
 
@@ -31,10 +32,39 @@ groupBy' eq (x : xs) = go [x] xs
       go g (y : zs) = reverse g : go [y] zs
       go g [] = [reverse g]
 
--- | Do a grouped diff and then split up the chunks into runs that
--- contain differences surrounded by N lines of unchanged text.  If
--- there is less then 2N+1 lines of unchanged text between two
--- changes, the runs are left merged.
+-- | See https://github.com/seereason/Diff/commit/35596ca45fdd6ee2559cf610bef7a86b4617988a.
+-- The original 'getContextDiff' omitted trailing context in diff hunks.
+-- This new one corrects the issue.  Here is the example from the test
+-- suite:
+--
+--     > prettyContextDiff (text "file1") (text "file2") text (getContextDiffOld 2 (lines textA) (lines textB))
+--     --- file1
+--     +++ file2
+--     @@
+--      a
+--      b
+--     -c
+--     @@
+--      d
+--      e
+--     @@
+--      i
+--      j
+--     -k
+--
+--     > prettyContextDiff (text "file1") (text "file2") text (getContextDiff 2 (lines textA) (lines textB))
+--     --- file1
+--     +++ file2
+--     @@
+--      a
+--      b
+--     -c
+--      d
+--      e
+--     @@
+--      i
+--      j
+--     -k
 getContextDiff :: Eq a => Int -> [a] -> [a] -> ContextDiff a
 getContextDiff context a b =
     groupBy' (\a b -> not (isBoth a && isBoth b)) $ doPrefix $ getGroupedDiff a b
@@ -59,6 +89,44 @@ getContextDiff context a b =
           Both (take context xs) (take context ys)
                    : doPrefix (Both (drop context xs) (drop context ys) : more)
       doSuffix (d : ds) = d : doSuffix ds
+
+-- | Do a grouped diff and then split up the chunks into runs that
+-- contain differences surrounded by N lines of unchanged text.  If
+-- there is less then 2N+1 lines of unchanged text between two
+-- changes, the runs are left merged.
+getContextDiffOld :: Eq a => Int -> [a] -> [a] -> ContextDiff a
+getContextDiffOld context a b =
+    group $ swap $ trimTail $ trimHead $ concatMap split $ getGroupedDiff a b
+    where
+      -- Drop the middle elements of a run of Both if there are more
+      -- than enough to form the context of the preceding changes and
+      -- the following changes.
+      split (Both xs ys) =
+          case length xs of
+            n | n > (2 * context) -> [Both (take context xs) (take context ys), Both (drop (n - context) xs) (drop (n - context) ys)]
+            _ -> [Both xs ys]
+      split x = [x]
+      -- If split created a pair of Both runs at the beginning or end
+      -- of the diff, remove the outermost.
+      trimHead [] = []
+      trimHead [Both _ _] = []
+      trimHead [Both _ _, Both _ _] = []
+      trimHead (Both _ _ : x@(Both _ _) : more) = x : more
+      trimHead xs = trimTail xs
+      trimTail [x@(Both _ _), Both _ _] = [x]
+      trimTail (x : more) = x : trimTail more
+      trimTail [] = []
+      -- If we see Second before First swap them so that the deletions
+      -- appear before the additions.
+      swap (x@(Second _) : y@(First _) : xs) = y : x : swap xs
+      swap (x : xs) = x : swap xs
+      swap [] = []
+      -- Split the list wherever we see adjacent Both constructors
+      group xs =
+          groupBy (\ x y -> not (isBoth x && isBoth y)) xs
+          where
+            isBoth (Both _ _) = True
+            isBoth _ = False
 
 -- | Pretty print a ContextDiff in the manner of diff -u.
 prettyContextDiff ::
