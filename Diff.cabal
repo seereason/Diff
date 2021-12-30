@@ -9,7 +9,7 @@ author:              Sterling Clover
 maintainer:          s.clover@gmail.com
 Tested-With:         GHC == 7.8.4
 Build-Type:          Simple
-Cabal-Version:       >= 1.8
+Cabal-Version:       >= 1.10
 
 library
   build-depends:   base >= 3 && <= 6, array, pretty >= 1.1
