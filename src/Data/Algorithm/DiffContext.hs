@@ -11,7 +11,8 @@
 -- Generates a grouped diff with merged runs, and outputs them in the manner of diff -u
 -----------------------------------------------------------------------------
 module Data.Algorithm.DiffContext
-    ( getContextDiff
+    ( getContextDiffNew
+    , getContextDiff
     , getContextDiffOld
     , prettyContextDiff
     ) where
@@ -65,13 +66,13 @@ groupBy' eq (x : xs) = go [x] xs
 --      i
 --      j
 --     -k
-getContextDiff ::
+getContextDiffNew ::
   Eq a
   => Maybe Int -- ^ Number of context elements, Nothing means infinite
   -> [a]
   -> [a]
   -> ContextDiff a
-getContextDiff context a b =
+getContextDiffNew context a b =
     groupBy' (\a b -> not (isBoth a && isBoth b)) $ doPrefix $ getGroupedDiff a b
     where
       isBoth (Both {}) = True
@@ -94,6 +95,9 @@ getContextDiff context a b =
           Both (maybe xs (\n -> take n xs) context) (maybe ys (\n -> take n ys) context)
                    : doPrefix (Both (maybe mempty (\n -> drop n xs) context) (maybe mempty (\n -> drop n ys) context) : more)
       doSuffix (d : ds) = d : doSuffix ds
+
+getContextDiff :: Eq a => Int -> [a] -> [a] -> ContextDiff a
+getContextDiff context a b = getContextDiffNew (Just context) a b
 
 -- | Do a grouped diff and then split up the chunks into runs that
 -- contain differences surrounded by N lines of unchanged text.  If
