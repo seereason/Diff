@@ -202,6 +202,6 @@ prop_context_diff =
                    First ["c"],
                    Both ["d","e"] ["d","e"]],
                   [Both ["i","j"] ["i","j"],First ["k"]]]
-      actual = getContextDiff 2 (lines textA) (lines textB)
+      actual = getContextDiff (Just 2) (lines textA) (lines textB)
       textA = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\n"
       textB = "a\nb\nd\ne\nf\ng\nh\ni\nj\n"

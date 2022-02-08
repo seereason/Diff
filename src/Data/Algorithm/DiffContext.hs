@@ -16,7 +16,7 @@ module Data.Algorithm.DiffContext
     , prettyContextDiff
     ) where
 
-import Data.Algorithm.Diff (Diff(..), getGroupedDiff)
+import Data.Algorithm.Diff (PolyDiff(..), Diff, getGroupedDiff)
 import Data.List (groupBy)
 import Data.Monoid (mappend)
 import Text.PrettyPrint (Doc, text, empty, hcat)
@@ -65,7 +65,12 @@ groupBy' eq (x : xs) = go [x] xs
 --      i
 --      j
 --     -k
-getContextDiff :: Eq a => Int -> [a] -> [a] -> ContextDiff a
+getContextDiff ::
+  Eq a
+  => Maybe Int -- ^ Number of context elements, Nothing means infinite
+  -> [a]
+  -> [a]
+  -> ContextDiff a
 getContextDiff context a b =
     groupBy' (\a b -> not (isBoth a && isBoth b)) $ doPrefix $ getGroupedDiff a b
     where
@@ -75,19 +80,19 @@ getContextDiff context a b =
       doPrefix [] = []
       doPrefix [Both _ _] = []
       doPrefix (Both xs ys : more) =
-          Both (drop (max 0 (length xs - context)) xs)
-               (drop (max 0 (length ys - context)) ys) : doSuffix more
+          Both (maybe xs (\n -> drop (max 0 (length xs - n)) xs) context)
+               (maybe ys (\n -> drop (max 0 (length ys - n)) ys) context) : doSuffix more
       -- Prefix finished, do the diff then the following suffix
       doPrefix (d : ds) = doSuffix (d : ds)
       -- Handle the common text following a diff.
       doSuffix [] = []
-      doSuffix [Both xs ys] = [Both (take context xs) (take context ys)]
+      doSuffix [Both xs ys] = [Both (maybe xs (\n -> take n xs) context) (maybe ys (\n -> take n ys) context)]
       doSuffix (Both xs ys : more)
-          | length xs <= context * 2 =
+          | maybe True (\n -> length xs <= n * 2) context =
               Both xs ys : doPrefix more
       doSuffix (Both xs ys : more) =
-          Both (take context xs) (take context ys)
-                   : doPrefix (Both (drop context xs) (drop context ys) : more)
+          Both (maybe xs (\n -> take n xs) context) (maybe ys (\n -> take n ys) context)
+                   : doPrefix (Both (maybe mempty (\n -> drop n xs) context) (maybe mempty (\n -> drop n ys) context) : more)
       doSuffix (d : ds) = d : doSuffix ds
 
 -- | Do a grouped diff and then split up the chunks into runs that
