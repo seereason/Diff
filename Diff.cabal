@@ -6,7 +6,7 @@ category:            Algorithms
 license:             BSD3
 license-file:        LICENSE
 author:              Sterling Clover
-maintainer:          s.clover@gmail.com
+maintainer:          David Fox <dsf@seereason.com>
 Tested-With:         GHC == 7.8.4
 Build-Type:          Simple
 Cabal-Version:       >= 1.10
