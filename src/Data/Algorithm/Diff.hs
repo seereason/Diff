@@ -7,10 +7,11 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- This is an implementation of the O(ND) diff algorithm as described in
--- \"An O(ND) Difference Algorithm and Its Variations (1986)\"
--- <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.4.6927>. It is O(mn) in space.
--- The algorithm is the same one used by standared Unix diff.
+-- This is an implementation of the diff algorithm as described in
+-- \"An \( O(ND) \) Difference Algorithm and Its Variations (1986)\"
+-- <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.4.6927>.
+-- For inputs of size \( O(N) \) with the number of differences \( D \)
+-- it has \( O(ND) \) time and \( O(D^2) \) space complexity.
 -----------------------------------------------------------------------------
 
 module Data.Algorithm.Diff
@@ -28,7 +29,7 @@ import Prelude hiding (pi)
 
 import Data.Array (listArray, (!))
 
-data DI = F | S | B deriving (Show, Eq)
+data DI = F | S deriving (Show, Eq)
 
 -- | A value is either from the 'First' list, the 'Second' or from 'Both'.
 -- 'Both' contains both the left and right values, in case you are using a form
@@ -68,7 +69,7 @@ dstep cd dls = hd:pairMaxes rst
 addsnake :: (Int -> Int -> Bool) -> DL -> DL
 addsnake cd dl
     | cd pi pj = addsnake cd $
-                 dl {poi = pi + 1, poj = pj + 1, path=(B : path dl)}
+                 dl {poi = pi + 1, poj = pj + 1, path = path dl}
     | otherwise   = dl
     where pi = poi dl; pj = poj dl
 
@@ -93,9 +94,10 @@ getGroupedDiff = getGroupedDiffBy (==)
 -- is taken as the first argument.
 getDiffBy :: (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff a b]
 getDiffBy eq a b = markup a b . reverse $ lcs eq a b
-    where markup (x:xs)   ys   (F:ds) = First x  : markup xs ys ds
+    where markup (x:xs) (y:ys) ds
+            | eq x y = Both x y : markup xs ys ds
+          markup (x:xs)   ys   (F:ds) = First x  : markup xs ys ds
           markup   xs   (y:ys) (S:ds) = Second y : markup xs ys ds
-          markup (x:xs) (y:ys) (B:ds) = Both x y : markup xs ys ds
           markup _ _ _ = []
 
 getGroupedDiffBy :: (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff [a] [b]]
