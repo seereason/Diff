@@ -26,8 +26,8 @@ module Data.Algorithm.Diff
     ) where
 
 import Prelude hiding (pi)
-
 import Data.Array (listArray, (!))
+import Data.Bifunctor
 
 data DI = F | S deriving (Show, Eq)
 
@@ -37,6 +37,11 @@ data DI = F | S deriving (Show, Eq)
 -- newtype to only perform equality on side of a tuple).
 data PolyDiff a b = First a | Second b | Both a b
     deriving (Show, Eq)
+
+instance Bifunctor PolyDiff where
+  bimap f _ (First a) = First (f a)
+  bimap _ g (Second b) = Second (g b)
+  bimap f g (Both a b) = Both (f a) (g b)
 
 -- | This is 'PolyDiff' specialized so both sides are the same type.
 type Diff a = PolyDiff a a
