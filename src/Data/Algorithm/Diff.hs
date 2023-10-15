@@ -38,6 +38,11 @@ data DI = F | S deriving (Show, Eq)
 data PolyDiff a b = First a | Second b | Both a b
     deriving (Show, Eq)
 
+instance Functor (PolyDiff a) where
+  fmap _ (First a) = First a
+  fmap g (Second b) = Second (g b)
+  fmap g (Both a b) = Both a (g b)
+
 instance Bifunctor PolyDiff where
   bimap f _ (First a) = First (f a)
   bimap _ g (Second b) = Second (g b)
