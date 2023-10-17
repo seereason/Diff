@@ -143,7 +143,7 @@ prop_ppDiffR (DiffInput le ri) =
         utilDiff= unsafePerformIO (runDiff (unlines le) (unlines ri))
     in  cover 90 (haskDiff == utilDiff) "exact match" $
                 classify (haskDiff == utilDiff) "exact match"
-                        (div ((length haskDiff)*100) (length utilDiff) < 110) -- less than 10% bigger
+                        (div ((length (lines haskDiff))*100) (length (lines utilDiff)) < 110) -- less than 10% bigger
     where
       runDiff left right =
           do leftFile <- writeTemp left
