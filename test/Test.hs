@@ -38,6 +38,11 @@ main = defaultMain [ testGroup "sub props" [
                         testProperty "self generates empty" $ forAll shortLists  prop_ppDiffEqual,
                         --testProperty "compare our lists with diff" $ forAll2 shortLists  prop_ppDiffShort,
                         testProperty "compare random with diff" prop_ppDiffR,
+                        testProperty "compare with diff, issue #5" $ prop_ppDiffR
+                          (DiffInput
+                            { diLeft = ["1","2","3","4","","5","6","7"]
+                            , diRight = ["1","2","3","q","b","u","l","","XXX6",""]
+                            }),
                         testProperty "test parse" prop_parse,
                         testProperty "test context" prop_context_diff
                      ]
@@ -138,7 +143,7 @@ prop_ppDiffR (DiffInput le ri) =
         utilDiff= unsafePerformIO (runDiff (unlines le) (unlines ri))
     in  cover 90 (haskDiff == utilDiff) "exact match" $
                 classify (haskDiff == utilDiff) "exact match"
-                        (div ((length haskDiff)*100) (length utilDiff) < 110) -- less than 10% bigger
+                        (div ((length (lines haskDiff))*100) (length (lines utilDiff)) < 110) -- less than 10% bigger
     where
       runDiff left right =
           do leftFile <- writeTemp left
