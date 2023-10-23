@@ -38,34 +38,36 @@ groupBy' eq (x : xs) = go [x] xs
 -- This new one corrects the issue.  Here is the example from the test
 -- suite:
 --
---     > prettyContextDiff (text "file1") (text "file2") text (getContextDiffOld 2 (lines textA) (lines textB))
---     --- file1
---     +++ file2
---     @@
---      a
---      b
---     -c
---     @@
---      d
---      e
---     @@
---      i
---      j
---     -k
---
---     > prettyContextDiff (text "file1") (text "file2") text (getContextDiff 2 (lines textA) (lines textB))
---     --- file1
---     +++ file2
---     @@
---      a
---      b
---     -c
---      d
---      e
---     @@
---      i
---      j
---     -k
+-- > > let textA = unlines ["a","b","c","d","e","f","g","h","i","j","k"]
+-- > > let textB = unlines ["a","b","d","e","f","g","h","i","j"]
+-- > > prettyContextDiff (text "file1") (text "file2") text (getContextDiffOld 2 (lines textA) (lines textB))
+-- > --- file1
+-- > +++ file2
+-- > @@
+-- >  a
+-- >  b
+-- > -c
+-- > @@
+-- >  d
+-- >  e
+-- > @@
+-- >  i
+-- >  j
+-- > -k
+-- >
+-- > > prettyContextDiff (text "file1") (text "file2") text (getContextDiff 2 (lines textA) (lines textB))
+-- > --- file1
+-- > +++ file2
+-- > @@
+-- >  a
+-- >  b
+-- > -c
+-- >  d
+-- >  e
+-- > @@
+-- >  i
+-- >  j
+-- > -k
 getContextDiffNew ::
   Eq a
   => Maybe Int -- ^ Number of context elements, Nothing means infinite

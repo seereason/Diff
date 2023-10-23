@@ -8,7 +8,7 @@
 -- Portability :  portable
 --
 -- This is an implementation of the diff algorithm as described in
--- \"An \( O(ND) \) Difference Algorithm and Its Variations (1986)\"
+-- /An \( O(ND) \) Difference Algorithm and Its Variations (1986)/
 -- <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.4.6927>.
 -- For inputs of size \( O(N) \) with the number of differences \( D \)
 -- it has \( O(ND) \) time and \( O(D^2) \) space complexity.
@@ -92,11 +92,19 @@ lcs eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb)
 
 -- | Takes two lists and returns a list of differences between them. This is
 -- 'getDiffBy' with '==' used as predicate.
+--
+-- > > getDiff ["a","b","c","d","e"] ["a","c","d","f"]
+-- > [Both "a" "a",First "b",Both "c" "c",Both "d" "d",First "e",Second "f"]
+-- > > getDiff "abcde" "acdf"
+-- > [Both 'a' 'a',First 'b',Both 'c' 'c',Both 'd' 'd',First 'e',Second 'f']
 getDiff :: (Eq a) => [a] -> [a] -> [Diff a]
 getDiff = getDiffBy (==)
 
 -- | Takes two lists and returns a list of differences between them, grouped
 -- into chunks. This is 'getGroupedDiffBy' with '==' used as predicate.
+--
+-- > > getGroupedDiff "abcde" "acdf"
+-- > [Both "a" "a",First "b",Both "cd" "cd",First "e",Second "f"]
 getGroupedDiff :: (Eq a) => [a] -> [a] -> [Diff [a]]
 getGroupedDiff = getGroupedDiffBy (==)
 

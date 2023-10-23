@@ -1,8 +1,12 @@
 name:                Diff
 version:             0.5
-synopsis:            O(ND) diff algorithm in haskell.
-description:         Implementation of the standard diff algorithm, and utilities for pretty printing.
+synopsis:            Diff algorithm in pure Haskell
+description:         Implementation of the standard diff algorithm in Haskell.
+ .
+ Time complexity is O(ND) (input length * number of differences).
+ Space complexity is O(D^2).  Includes utilities for pretty printing.
 category:            Algorithms
+homepage:            https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.4.6927
 license:             BSD3
 license-file:        LICENSE
 author:              Sterling Clover

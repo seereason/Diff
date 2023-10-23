@@ -45,6 +45,14 @@ diffToLineRanges = toLineRange 1 1
                         : toLineRange (leftLine+linesF) (rightLine+linesS) rs
 
 -- | pretty print the differences. The output is similar to the output of the diff utility
+--
+-- > > putStr (ppDiff (getGroupedDiff ["a","b","c","d","e"] ["a","c","d","f"]))
+-- > 2d1
+-- > < b
+-- > 5c4
+-- > < e
+-- > ---
+-- > > f
 ppDiff :: [Diff [String]] -> String
 ppDiff gdiff =
    let  diffLineRanges = diffToLineRanges gdiff
