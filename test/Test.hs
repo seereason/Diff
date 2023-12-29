@@ -1,3 +1,6 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
 import Test.Framework (defaultMain, testGroup)
@@ -6,6 +9,9 @@ import Test.QuickCheck
 import Data.Algorithm.Diff
 import Data.Algorithm.DiffContext
 import Data.Algorithm.DiffOutput
+import qualified Data.Array as A
+import Data.Foldable
+import Data.Semigroup (Arg(..))
 import Text.PrettyPrint
 
 import System.IO
@@ -32,7 +38,8 @@ main = defaultMain [ testGroup "sub props" [
                         slTest2 "lcsBoth" prop_lcsBoth,
                         slTest2 "recover first" prop_recoverFirst,
                         slTest2 "recover second" prop_recoverSecond,
-                        slTest2 "lcs" prop_lcs
+                        slTest2 "lcs" prop_lcs,
+                        testProperty "compare random with reference" prop_compare_with_reference
                      ],
                      testGroup "output props" [
                         testProperty "self generates empty" $ forAll shortLists  prop_ppDiffEqual,
@@ -210,3 +217,59 @@ prop_context_diff =
       actual = getContextDiff 2 (lines textA) (lines textB)
       textA = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\n"
       textB = "a\nb\nd\ne\nf\ng\nh\ni\nj\n"
+
+-- | Reference implementation, very slow.
+naiveGetDiffBy :: forall a b. (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff a b]
+naiveGetDiffBy eq as bs = reverse $ (\(Arg _ ds) -> ds) $ tbl A.! (length us, length vs)
+  where
+    us = A.listArray (0, length as - 1) as
+    vs = A.listArray (0, length bs - 1) bs
+
+    -- Indices run up to length us/vs *inclusive*
+    tbl :: A.Array (Int, Int) (Arg Word [PolyDiff a b])
+    tbl = A.listArray ((0, 0), (length us, length vs))
+      [ gen ui vi | ui <- [0..length us], vi <- [0..length vs] ]
+
+    gen :: Int -> Int -> Arg Word [PolyDiff a b]
+    gen ui vi
+      | ui == 0, vi == 0 = Arg 0 []
+      | ui == 0
+      = left'
+      | vi == 0
+      = top'
+      | otherwise
+      = if eq u v
+        then min (min left' top') diag'
+        else min left' top'
+      where
+        Arg leftL leftP = tbl A.! (ui, vi - 1)
+        Arg diagL diagP = tbl A.! (ui - 1, vi - 1)
+        Arg topL topP  = tbl A.! (ui - 1, vi)
+
+        u = us A.! (ui - 1)
+        v = vs A.! (vi - 1)
+
+        left' = Arg (leftL + 1) (Second v : leftP)
+        top' = Arg (topL + 1) (First u  : topP)
+        diag' = Arg diagL (Both u v : diagP)
+
+prop_compare_with_reference :: Positive Word -> [(Int, Int)] -> Property
+prop_compare_with_reference (Positive x) ixs' =
+  counterexample (show (as, bs, d1, d2)) $
+    length (notBoth d1) === length (notBoth d2)
+  where
+    as = [0 .. max 100 x]
+    len = length as
+    ixs = filter (uncurry (/=)) $ map (\(i, j) -> (i `mod` len, j `mod` len)) $ take 100 ixs'
+    bs = foldl' applySwap as ixs
+    d1 = getDiffBy (==) as bs
+    d2 = naiveGetDiffBy (==) as bs
+
+    applySwap xs (i, j) = zipWith
+      (\k x -> (if k == i then xs !! j else if k == j then xs !! i else x))
+      [0..]
+      xs
+
+    notBoth = filter $ \case
+      Both{} -> False
+      _ -> True
