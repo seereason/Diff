@@ -210,11 +210,13 @@ prop_context_diff :: Bool
 prop_context_diff =
     expected == actual
     where
-      expected = [[Both ["a","b"] ["a","b"],
-                   First ["c"],
-                   Both ["d","e"] ["d","e"]],
-                  [Both ["i","j"] ["i","j"],First ["k"]]]
-      actual = getContextDiff 2 (lines textA) (lines textB)
+      -- Note that the line numbers don't affect equality
+      expected = [[Both [Numbered 1 "a",Numbered 2 "b"] [Numbered 1 "a",Numbered 2 "b"],
+                   First [Numbered 3 "c"],
+                   Both [Numbered 4 "d",Numbered 5 "e"] [Numbered 3 "d",Numbered 4 "e"]],
+                  [Both [Numbered 9 "i",Numbered 10 "j"] [Numbered 8 "i",Numbered 9 "j"],
+                   First [Numbered 11 "k"]]]
+      actual = getContextDiff (Just 2) (lines textA) (lines textB)
       textA = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\n"
       textB = "a\nb\nd\ne\nf\ng\nh\ni\nj\n"
 
