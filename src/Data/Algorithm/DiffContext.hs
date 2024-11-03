@@ -11,7 +11,8 @@
 -- Generates a grouped diff with merged runs, and outputs them in the manner of diff -u
 -----------------------------------------------------------------------------
 module Data.Algorithm.DiffContext
-    ( getContextDiff
+    ( ContextDiff, Hunk
+    , getContextDiff
     , prettyContextDiff
     , prettyContextDiffOld
     , getContextDiffNumbered
