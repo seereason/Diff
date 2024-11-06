@@ -1,3 +1,7 @@
+# 1.0.1.1
+
+  - Require `base >= 4.11` (GHC 8.4).
+
 # 1.0
 
   - Add Unix diff style annotations to output of `prettyContextDiff`,
