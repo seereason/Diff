@@ -150,7 +150,7 @@ prettyContextDiff old new prettyElem hunks =
       formatHunk hunk = "-" <> formatRun (firsts hunk) <> " +" <> formatRun (seconds hunk)
 
       formatRun :: [Int] -> String
-      formatRun [] = error "empty hunk!"
+      formatRun [] = "-0,0"
       formatRun [n] = show n
       formatRun ns@(n : _) = show n <> "," <> show (length ns)
 
@@ -164,6 +164,7 @@ prettyContextDiff old new prettyElem hunks =
       seconds (Second ns : more) = fmap (\(Numbered n _) -> n) ns <> seconds more
       seconds [] = []
 
+-- | Pretty print without line numbers.
 prettyContextDiffOld ::
        Doc            -- ^ Document 1 name
     -> Doc            -- ^ Document 2 name

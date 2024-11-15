@@ -1,3 +1,7 @@
+# 1.0.2
+
+  - Output correct format when an input file is empty, e.g. `@@ --0,0 +1,3 @@`.
+
 # 1.0.1.1
 
   - Require `base >= 4.11` (GHC 8.4).

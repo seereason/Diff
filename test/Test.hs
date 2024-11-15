@@ -50,11 +50,29 @@ main = defaultMain [ testGroup "sub props" [
                             { diLeft = ["1","2","3","4","","5","6","7"]
                             , diRight = ["1","2","3","q","b","u","l","","XXX6",""]
                             }),
-                        testProperty "test parse" prop_parse,
-                        testProperty "test context" prop_context_diff
+                        testProperty "test parse" prop_parse
+                     ],
+                     testGroup "context props" [
+                        testProperty "test context" $ prop_ppContextDiffUnitTest
+                          (DiffInput
+                            { diLeft = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"]
+                            , diRight = ["a", "b", "d", "e", "f", "g", "h", "i", "j"]
+                            })
+                          "--- a\n+++ b\n@@ -1,5 +1,4 @@\n a\n b\n-c\n d\n e\n@@ -9,3 +8,2 @@\n i\n j\n-k\n",
+                        testProperty "compare with empty" $ prop_ppContextDiffUnitTest
+                          (DiffInput
+                            { diLeft = []
+                            , diRight = ["1","2","3"]
+                            })
+                          "--- a\n+++ b\n@@ --0,0 +1,3 @@\n+1\n+2\n+3\n",
+                        testProperty "compare with empty" $ prop_ppContextDiffUnitTest
+                          (DiffInput
+                            { diLeft = ["1","2","3"]
+                            , diRight = []
+                            })
+                          "--- a\n+++ b\n@@ -1,3 +-0,0 @@\n-1\n-2\n-3\n"
                      ]
                    ]
-
 slTest s t = testProperty s $ forAll shortLists   (t :: [Bool] -> Bool)
 slTest2 s t = testProperty s $ forAll2 shortLists (t :: [Bool] -> [Bool] -> Bool)
 
@@ -173,6 +191,13 @@ prop_ppDiffR (DiffInput le ri) =
              hClose h
              return fp
 
+prop_ppContextDiffUnitTest :: DiffInput -> String -> Property
+prop_ppContextDiffUnitTest (DiffInput le ri) expected =
+  show diff === expected
+  where
+    hunks = getContextDiff (Just 2) le ri
+    diff = prettyContextDiff (text "a") (text "b") (text . unnumber) hunks
+
 -- | Check pretty printed DiffOperations can be parsed again
 prop_parse :: DiffInput -> Bool
 prop_parse (DiffInput le ri) =
@@ -204,21 +229,6 @@ instance Arbitrary DiffInput where
                          , (3, return (prefix ++ ["XXX" ++ str]))
                          , (2, return prefix)
                          , (2, return [str])]
-
--- | FIXME - make a real quickcheck property
-prop_context_diff :: Bool
-prop_context_diff =
-    expected == actual
-    where
-      -- Note that the line numbers don't affect equality
-      expected = [[Both [Numbered 1 "a",Numbered 2 "b"] [Numbered 1 "a",Numbered 2 "b"],
-                   First [Numbered 3 "c"],
-                   Both [Numbered 4 "d",Numbered 5 "e"] [Numbered 3 "d",Numbered 4 "e"]],
-                  [Both [Numbered 9 "i",Numbered 10 "j"] [Numbered 8 "i",Numbered 9 "j"],
-                   First [Numbered 11 "k"]]]
-      actual = getContextDiff (Just 2) (lines textA) (lines textB)
-      textA = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\n"
-      textB = "a\nb\nd\ne\nf\ng\nh\ni\nj\n"
 
 -- | Reference implementation, very slow.
 naiveGetDiffBy :: forall a b. (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff a b]
