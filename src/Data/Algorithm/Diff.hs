@@ -14,6 +14,8 @@
 -- it has \( O(ND) \) time and \( O(D^2) \) space complexity.
 -----------------------------------------------------------------------------
 
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+
 module Data.Algorithm.Diff
     ( Diff, PolyDiff(..)
     -- * Comparing lists for differences
