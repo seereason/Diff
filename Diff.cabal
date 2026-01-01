@@ -37,7 +37,7 @@ library
     , pretty >= 1.1
   hs-source-dirs:  src
   exposed-modules:
-                   Data.Algorithm.Diff,
+                   Data.Algorithm.Diff
                    Data.Algorithm.DiffOutput
                    Data.Algorithm.DiffContext
   ghc-options:     -Wall -funbox-strict-fields
