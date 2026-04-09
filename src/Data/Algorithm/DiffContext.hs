@@ -99,7 +99,8 @@ getContextDiffNumbered ::
   -> [Numbered a]
   -> [Numbered a]
   -> ContextDiff (Numbered a)
-getContextDiffNumbered contextSize a0 b0 =
+getContextDiffNumbered Nothing a0 b0 = [getGroupedDiff a0 b0]
+getContextDiffNumbered (Just contextSize) a0 b0 =
     -- The 'Diff' list is grouped into 'Hunks' that begin and end
     -- with matching ('Both') text, having non-matching ('First' and 'Second')
     -- text in the middle. Note that a non-trivial partition can only happen after
@@ -125,8 +126,8 @@ getContextDiffNumbered contextSize a0 b0 =
       doPrefix [Both _ _] = []
       -- Do the prefix and then make the suffix.
       doPrefix (Both xs ys : more) =
-          Both (maybe xs (\n -> drop (max 0 (length xs - n)) xs) contextSize)
-               (maybe ys (\n -> drop (max 0 (length ys - n)) ys) contextSize) : doSuffix more
+        Both (drop (length xs - contextSize) xs)
+             (drop (length ys - contextSize) ys) : doSuffix more
       -- Prefix finished, do the diff then the following suffix.
       doPrefix (d : ds) = doSuffix (d : ds)
       -- | Handle the common text following a diff.
@@ -136,21 +137,18 @@ getContextDiffNumbered contextSize a0 b0 =
       doSuffix :: Hunk a -> Hunk a
       doSuffix [] = []
       -- A trailing suffix.
-      doSuffix [Both xs ys] = [Both (maybe xs (\n -> take n xs) contextSize) (maybe ys (\n -> take n ys) contextSize)]
-      -- Either whole context or common text is too short to split.
-      doSuffix (Both xs ys : more)
-          | maybe True (\n -> length xs <= n * 2) contextSize =
-              Both xs ys : doPrefix more
+      doSuffix [Both xs ys] = [Both (take contextSize xs) (take contextSize ys)]
       -- If the common text is too short compared with the context,
       -- we preserve it and continue. As the following element cannot be a 'Both'
       -- as well, this effectively places the common text in the inner part of the diff.
       -- Otherwise, we split it into a suffix and prefix
       -- (resulting in some elements excluded from the diff in the middle).
-      doSuffix (Both xs ys : more) =
-          -- NOTE: the guard above ensures that the following 'maybe's
-          -- default values are unreachable and result in non-empty lists.
-          Both (maybe xs (\n -> take n xs) contextSize) (maybe ys (\n -> take n ys) contextSize)
-                   : doPrefix (Both (maybe mempty (\n -> drop n xs) contextSize) (maybe mempty (\n -> drop n ys) contextSize) : more)
+      doSuffix (Both xs ys : more)
+        | length xs <= contextSize * 2 =
+            Both xs ys : doPrefix more
+        | otherwise =
+            Both (take contextSize xs) (take contextSize ys) :
+            doPrefix (Both (drop contextSize xs) (drop contextSize ys) : more)
       -- 'First' and 'Second' elements are no suffix, preserve them and continue looking.
       doSuffix (d : ds) = d : doSuffix ds
 
