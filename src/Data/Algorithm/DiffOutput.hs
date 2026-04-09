@@ -25,6 +25,7 @@ diffToLineRanges = toLineRange 1 1
           -- | In @toLineRange x y ds@, @x@ is the index of the current string in the
           -- left input of the diff @ds@, and @y@ is the index of the corresponding
           -- string in the right input of the diff @ds@.
+          {-@ toLineRange :: Int -> Int -> diffs : [Diff[String]] -> [DiffOperation LineRange] / [len diffs, 0] @-}
           toLineRange :: Int -> Int -> [Diff [String]] -> [DiffOperation LineRange]
           toLineRange _ _ []=[]
           -- If the lines are the same, we just move forward.
@@ -47,6 +48,7 @@ diffToLineRanges = toLineRange 1 1
                     diff=Deletion (LineRange (leftLine,leftLine+linesF-1) lsF) (rightLine-1)
                 in  diff: toLineRange(leftLine+linesF) rightLine rs
           -- | Build 'Change's from adjacent additions and deletions.
+          {-@ toChange :: Int -> Int -> [String] -> [String] -> diffs : [Diff [String]] -> [DiffOperation LineRange] / [len diffs, 1] @-}
           toChange :: Int -- ^ Current left line number.
                    -> Int -- ^ Current right line number.
                    -> [String] -- ^ Lines from the 'First' list (corresponding to deletions).
@@ -102,6 +104,7 @@ parsePrettyDiffs = reverse . doParse [] . lines
   where
     -- | Parsing entry point that iteratively accumulates 'DiffOperation's
     -- until the input is exhausted.
+    {-@ doParse :: [DiffOperation LineRange] -> diffs : [String] -> [DiffOperation LineRange] / [len diffs] @-}
     doParse :: [DiffOperation LineRange] -> [String] -> [DiffOperation LineRange]
     -- NOTE: Incorrectly formatted lines are ignored.
     doParse acc [] = acc

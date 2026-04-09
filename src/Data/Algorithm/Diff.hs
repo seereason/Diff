@@ -210,6 +210,7 @@ dstep cd (dl:dls) = hStep dl : stepAndMerge dl dls
     stepAndMerge prev (next:rest) =
       furthestReaching (vStep prev) (hStep next) : stepAndMerge next rest
 
+{-@ lazy addsnake @-}
 -- | Follow a /snake/ from the current position of a 'DL' node.
 --
 -- A snake is a sequence of diagonal (cost-free) edges in the edit graph,
@@ -225,6 +226,7 @@ addsnake cd dl
     | otherwise   = dl
     where pi = poi dl; pj = poj dl
 
+{-@ ignore ses @-}
 -- | Compute shortest edit script (SES), as the minimum sequence of 'DI' edit
 -- steps that transforms @as@ into @bs@, returned in reverse order.
 --
