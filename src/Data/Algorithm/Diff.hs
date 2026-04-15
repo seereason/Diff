@@ -18,8 +18,8 @@
 -- Finding the shortest edit script (SES) from a list \( as \) to a list \( bs \)
 -- is modelled as a shortest-path search on an /edit graph/: an
 -- \( (M+1) \times (N+1) \) grid of nodes \( (i, j) \),
--- where \( M = |as| \) and \( N = |bs| \), with \( i \) increasing rightward
--- and \( j \) increasing downward.
+-- where \( M \) and \( N \) are the lengths of \( as \) and \( bs \) respectively,
+-- with \( i \) increasing rightward and \( j \) increasing downward.
 -- Each node represents the state of having consumed \( i \) elements of \( as \)
 -- and \( j \) elements of \( bs \). Three types of move are possible:
 --
