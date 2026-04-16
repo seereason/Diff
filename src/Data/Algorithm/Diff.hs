@@ -43,17 +43,17 @@
 -- successor. This distinction is only relevant when reading the implementation
 -- alongside the paper.
 --
--- === K-diagonals and the BFS frontier
+-- === K-diagonals and the wave front
 --
 -- Every node \( (i,j) \) lies on the /k-diagonal/ \( k = i - j \).
 -- After exactly \( D \) non-diagonal moves, every reachable node lies on one of
 -- at most \( D+1 \) k-diagonals \( k \in \{-D,\,-D+2,\,\ldots,\,D-2,\,D\} \).
 -- On each diagonal it suffices to track only the /furthest-reaching/ node
 -- (the one with the largest \( i \)), collapsing the two-dimensional grid to a
--- one-dimensional frontier indexed by \( k \).
+-- one-dimensional /wave front/ indexed by \( k \).
 --
--- The algorithm performs a BFS over \( D = 0, 1, 2, \ldots \), advancing
--- the frontier by one edit at a time until a frontier node reaches the goal
+-- The algorithm performs a bread-first search over \( D = 0, 1, 2, \ldots \),
+-- advancing the wave front by one edit at a time until a node reaches the goal
 -- \( (M, N) \). The edit trace stored in that node is the SES, which
 -- 'getDiffBy' reconstructs into a 'PolyDiff' list. The term /trace/ here
 -- differs from the paper, where it denotes the sequence of k-diagonals visited
@@ -124,10 +124,10 @@ instance Bifunctor PolyDiff where
 -- | This is 'PolyDiff' specialized so both sides are the same type.
 type Diff a = PolyDiff a a
 
--- | /D-path Location/ — a node on the BFS frontier of the Myers O(ND) diff
+-- | /D-path Location/ — a node on the wave front of the Myers O(ND) diff
 -- algorithm.
 --
--- Each frontier consists of one 'DL' per /k-diagonal/.  A 'DL' stores the
+-- Each wave front consists of one 'DL' per /k-diagonal/.  A 'DL' stores the
 -- endpoint coordinates and the edit trace of a \( D \)-path, i.e. a path from the
 -- origin \( (0,0) \) that uses exactly \( D \) non-diagonal edges.
 data DL = DL
@@ -184,10 +184,11 @@ canDiag eq as bs lena lenb = \ i j ->
      arAs = listArray (0,lena - 1) as
      arBs = listArray (0,lenb - 1) bs
 
--- | Perform one BFS expansion step, advancing every frontier 'DL' node by one
--- edit (one non-diagonal edge) and then following any available snake.
+-- | Perform one breath-first search expansion step, advancing every wave front
+-- 'DL' node by one 'DI' edit (one non-diagonal edge) and then following
+-- any available snake.
 --
--- For each existing frontier node the step produces two candidate successors:
+-- For each node the 'dstep' produces two candidate successors by adding:
 --
 -- * An 'F' (delete) move: 'poi' incremented by 1.
 -- * An 'S' (insert) move: 'poj' incremented by 1.
@@ -196,20 +197,20 @@ canDiag eq as bs lena lenb = \ i j ->
 -- available sequence of matching elements.
 --
 -- The resulting candidate list interleaves the 'F' and 'S' successors of each
--- frontier node. The head ('F' successor of the first node) is kept as-is, and
+-- wave front node. The head ('F' successor of the first node) is kept as-is, and
 -- 'pairMaxes' is applied to the tail — pairing each 'S' successor with the 'F'
--- successor of the next frontier node. When this function is iterated from a
+-- successor of the next wave front node. When this function is iterated from a
 -- single-node seed (as in 'lcs'), each such pair always lies on the same
 -- diagonal: an 'F' edge advances to the next higher diagonal while an 'S' edge
 -- retreats to the next lower one, so the two members of each pair straddle the
 -- same diagonal from opposite sides.
 dstep
   :: (Int -> Int -> Bool) -- ^ Diagonal predicate
-  -> [DL]                 -- ^ Frontier of D-paths at edit distance D
-  -> [DL]                 -- ^ Frontier of D-paths at edit distance D+1
+  -> [DL]                 -- ^ Wave front of D-paths at edit distance D
+  -> [DL]                 -- ^ Wave front of D-paths at edit distance D+1
 dstep cd dls = hd:pairMaxes rst
   where (hd:rst) = nextDLs dls
-        -- Extend each frontier node by one edit step in both possible directions
+        -- Extend each node by one edit step in both possible directions
         -- and then follow any available snake from the resulting position.
         nextDLs [] = []
         nextDLs (dl:rest) = dl':dl'':nextDLs rest
@@ -241,14 +242,14 @@ addsnake cd dl
 -- the SES: its subsequence of /match points/ is the Longest Common Subsequence
 -- (LCS).
 --
--- @lcs eq as bs@ runs the Myers O(ND) BFS algorithm following
+-- @lcs eq as bs@ runs the Myers O(ND) diff algorithm following
 -- a five-step pipeline:
 --
--- 1. __Seed__: create the initial single-node frontier @[addsnake cd (DL 0 0 [])]@
---    corresponding to the upper bound of the longest origin-sourced snake.
+-- 1. __Seed__: create an initial 0-path wave front @[addsnake cd (DL 0 0 [])]@
+--    having a single node on the tip of the longest origin-sourced snake.
 -- 2. __Iterate__: apply 'dstep' repeatedly via 'iterate', producing an
---    infinite list of frontiers (one per edit distance D = 0, 1, 2, …).
--- 3. __Flatten__: 'concat' all frontiers into a single stream of 'DL' nodes.
+--    infinite list of wave fronts (one per edit distance D = 0, 1, 2, …).
+-- 3. __Flatten__: 'concat' all wave fronts into a single stream of 'DL' nodes.
 -- 4. __Find__: 'dropWhile' skips nodes until one reaches @(lena, lenb)@ — the
 --    bottom-right corner of the edit graph — which is the terminal node of a
 --    shortest edit script.
@@ -256,11 +257,11 @@ addsnake cd dl
 --    trace in reverse order.
 --
 -- This implementation is purely functional: rather than updating a shared
--- frontier array in place, as in the original paper, it builds a new list of
--- 'DL' nodes for each value of \( D \) and concatenates them into a single
--- lazy stream. This is simpler but carries a larger per-node overhead: each
--- 'DL' holds its own edit trace as a @['DI']@ list that structurally shares
--- its tail with the parent node's trace (consing one step reuses the
+-- diagonal frontier array in place, as in the original paper, it builds a new
+-- list of 'DL' nodes for each value of \( D \) and concatenates them into
+-- a single lazy stream. This is simpler but carries a larger per-node overhead:
+-- each 'DL' holds its own edit trace as a @['DI']@ list that structurally
+-- shares its tail with the parent node's trace (consing one step reuses the
 -- existing spine), rather than the paper's single-integer-per-diagonal
 -- representation. The asymptotic time
 -- and space complexity — \( O(ND) \) and \( O(D^2) \) respectively — is
