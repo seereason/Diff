@@ -31,9 +31,7 @@
 --   and is only available when \( as[i] = bs[j] \).
 --
 -- The SES corresponds to a path from \( (0,0) \) to \( (M,N) \) that minimises
--- the number of non-diagonal moves. The nodes at which diagonal moves are taken
--- — the /match points/ — form the Longest Common Subsequence (LCS) of the two
--- input lists, as established in the paper.
+-- the number of non-diagonal moves.
 --
 -- Both input lists are 0-indexed, which leads to a slightly different
 -- interpretation of the edit graph than in the original paper. In the paper,
@@ -105,7 +103,7 @@ data DI = F | S deriving (Show, Eq)
 --
 -- * 'First' — the element exists only in the /first/ input (a deletion).
 -- * 'Second' — the element exists only in the /second/ input (an insertion).
--- * 'Both' — the element is common to both inputs (part of the LCS).
+-- * 'Both' — the element is common to both inputs.
 --   Both the left and right values are retained so that the original
 --   elements can be recovered even when equality ignores some fields.
 data PolyDiff a b = First a | Second b | Both a b
@@ -200,7 +198,7 @@ canDiag eq as bs lena lenb = \ i j ->
 -- wave front node. The head ('F' successor of the first node) is kept as-is, and
 -- 'pairMaxes' is applied to the tail — pairing each 'S' successor with the 'F'
 -- successor of the next wave front node. When this function is iterated from a
--- single-node seed (as in 'lcs'), each such pair always lies on the same
+-- single-node seed (as in 'ses'), each such pair always lies on the same
 -- diagonal: an 'F' edge advances to the next higher diagonal while an 'S' edge
 -- retreats to the next lower one, so the two members of each pair straddle the
 -- same diagonal from opposite sides.
@@ -237,12 +235,10 @@ addsnake cd dl
     | otherwise   = dl
     where pi = poi dl; pj = poj dl
 
--- | Compute the minimum sequence of 'DI' edit steps that transforms @as@ into
--- @bs@, returned in reverse order. The result is in direct correspondence with
--- the SES: its subsequence of /match points/ is the Longest Common Subsequence
--- (LCS).
+-- | Compute shortest edit script (SES), as the minimum sequence of 'DI' edit
+-- steps that transforms @as@ into @bs@, returned in reverse order.
 --
--- @lcs eq as bs@ runs the Myers O(ND) diff algorithm following
+-- @ses eq as bs@ runs the Myers O(ND) diff algorithm following
 -- a five-step pipeline:
 --
 -- 1. __Seed__: create an initial 0-path wave front @[addsnake cd (DL 0 0 [])]@
@@ -273,8 +269,8 @@ addsnake cd dl
 -- successive values of \( D \), because each new candidate starts at or
 -- beyond the previous winner's endpoint. The total number of element
 -- comparisons across all snake extensions is therefore \( O(ND) \).
-lcs :: (a -> b -> Bool) -> [a] -> [b] -> [DI]
-lcs eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
+ses :: (a -> b -> Bool) -> [a] -> [b] -> [DI]
+ses eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
             concat . iterate (dstep cd) . (:[]) . addsnake cd $
             DL {poi=0,poj=0,path=[]}
             where cd = canDiag eq as bs lena lenb
@@ -301,7 +297,7 @@ getGroupedDiff = getGroupedDiffBy (==)
 -- | A form of 'getDiff' with no 'Eq' constraint. Instead, an equality predicate
 -- is taken as the first argument.
 getDiffBy :: (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff a b]
-getDiffBy eq a b = markup a b . reverse $ lcs eq a b
+getDiffBy eq a b = markup a b . reverse $ ses eq a b
     where markup (x:xs) (y:ys) ds
             | eq x y = Both x y : markup xs ys ds
           markup (x:xs)   ys   (F:ds) = First x  : markup xs ys ds
