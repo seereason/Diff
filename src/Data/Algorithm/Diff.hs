@@ -50,7 +50,7 @@
 -- (the one with the largest \( i \)), collapsing the two-dimensional grid to a
 -- one-dimensional /wave front/ indexed by \( k \).
 --
--- The algorithm performs a bread-first search over \( D = 0, 1, 2, \ldots \),
+-- The algorithm performs a breadth-first search over \( D = 0, 1, 2, \ldots \),
 -- advancing the wave front by one edit at a time until a node reaches the goal
 -- \( (M, N) \). The edit trace stored in that node is the SES, which
 -- 'getDiffBy' reconstructs into a 'PolyDiff' list. The term /trace/ here
@@ -182,7 +182,7 @@ canDiag eq as bs lena lenb = \ i j ->
      arAs = listArray (0,lena - 1) as
      arBs = listArray (0,lenb - 1) bs
 
--- | Perform one breath-first search expansion step, advancing every wave front
+-- | Perform one breadth-first search expansion step, advancing every wave front
 -- 'DL' node by one 'DI' edit (one non-diagonal edge) and then following
 -- any available snake.
 --
