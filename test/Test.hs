@@ -99,10 +99,7 @@ prop_sub xs ys = isSub xs ys == elem xs (subs ys)
 prop_everySubIsSub xs = all (flip isSub xs) (subs xs)
 
 
--- | Obtains a longest common subsequence of two lists using their
--- diff. Note that there is an @lcs@ function in the
--- 'Data.Algorithm.Diff' module, but it's not exported. It's trivial
--- to reconstruct the LCS though, just by taking the 'B' elements.
+-- | Obtains a longest common subsequence of two lists using their diff.
 diffLCS :: (Eq a) => [a] -> [a] -> [a]
 diffLCS xs ys = recoverLCS $ getDiff xs ys
 
