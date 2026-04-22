@@ -22,6 +22,9 @@ import Data.List
 diffToLineRanges :: [Diff [String]] -> [DiffOperation LineRange]
 diffToLineRanges = toLineRange 1 1
    where
+          -- | In @toLineRange x y ds@, @x@ is the index of the current string in the
+          -- left input of the diff @ds@, and @y@ is the index of the corresponding
+          -- string in the right input of the diff @ds@.
           toLineRange :: Int -> Int -> [Diff [String]] -> [DiffOperation LineRange]
           toLineRange _ _ []=[]
           -- If the lines are the same, we just move forward.
