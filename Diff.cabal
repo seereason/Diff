@@ -42,6 +42,7 @@ library
                    Data.Algorithm.Diff
                    Data.Algorithm.DiffOutput
                    Data.Algorithm.DiffContext
+  other-modules:   Internal.LiftedFunctions
   ghc-options:     -Wall -funbox-strict-fields
 
 source-repository head

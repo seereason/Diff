@@ -22,6 +22,7 @@ library
     Data.Algorithm.Diff
     Data.Algorithm.DiffOutput
     Data.Algorithm.DiffContext
+    Internal.LiftedFunctions
   build-depends:
       base          >= 4.22.0.0 && < 5
     , array
