@@ -166,10 +166,17 @@ parsePrettyDiffs = reverse . doParse [] . lines
                                     _ -> (fstLine,rs)
         in ((read fstLine,read sndLine),rs3)
 
--- | Line number alias.
+-- | Line number alias. Always non-negative.
 type LineNo = Int
 
 -- | Line Range: start, end and contents.
+--
+-- The following invariants hold:
+--
+-- > snd lrNumbers >= fst lrNumbers
+-- > snd lrNumbers - fst lrNumbers + 1 == length lrContents
+--
+-- which imply @lrContents@ cannot be empty.
 data LineRange = LineRange { lrNumbers :: (LineNo, LineNo)
                            , lrContents :: [String]
                            }
