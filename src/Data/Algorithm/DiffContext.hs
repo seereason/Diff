@@ -44,6 +44,9 @@ splitBothBoth = go []
     go g (x : xs) = go (x:g) xs
     go g [] = [reverse g]
 
+{-@ type ContextSize = Nat @-}
+type ContextSize = Int
+
 data Numbered a = Numbered Int a deriving Show
 instance Eq a => Eq (Numbered a) where
   Numbered _ a == Numbered _ b = a == b
@@ -75,7 +78,7 @@ unnumber (Numbered _ a) = a
 -- > -k
 getContextDiff ::
   Eq a
-  => Maybe Int -- ^ Context size. 'Nothing' means returning a whole-diff 'Hunk'.
+  => Maybe ContextSize -- ^ Context size. 'Nothing' means returning a whole-diff 'Hunk'.
   -> [a]
   -> [a]
   -> ContextDiff (Numbered a)
@@ -96,7 +99,7 @@ unNumberContextDiff = fmap (fmap (bimap (fmap unnumber) (fmap unnumber)))
 -- a single hunk with the whole diff is produced.
 getContextDiffNumbered ::
   Eq a
-  => Maybe Int -- ^ Context size. 'Nothing' means returning a whole-diff 'Hunk'.
+  => Maybe ContextSize -- ^ Context size. 'Nothing' means returning a whole-diff 'Hunk'.
   -> [Numbered a]
   -> [Numbered a]
   -> ContextDiff (Numbered a)
