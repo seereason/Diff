@@ -125,6 +125,13 @@ type Diff a = PolyDiff a a
 -- Each wave front consists of one 'DL' per /k-diagonal/.  A 'DL' stores the
 -- endpoint coordinates and the edit trace of a \( D \)-path, i.e. a path from the
 -- origin \( (0,0) \) that uses exactly \( D \) non-diagonal edges.
+{-@
+data DL = DL
+    { poi  :: Nat
+    , poj  :: Nat
+    , path :: { p : [DI] | len p <= poi + poj }
+    }
+@-}
 data DL = DL
     { poi  :: !Int   -- ^ /Position On I/ — the @x@-coordinate of the endpoint
                      --   in the edit graph, i.e. the number of elements
@@ -193,6 +200,12 @@ canDiag eq as bs lena lenb = \ i j ->
 -- two members of each pair straddle the same diagonal from opposite sides.
 --
 -- Precondition: The node list must be non-empty.
+{-@
+dstep
+  :: (Nat -> Nat -> Bool)
+  -> {nodes : [DL] | len nodes > 0}
+  -> {v : [DL] | len v = len nodes + 1}
+@-}
 dstep
   :: (Int -> Int -> Bool) -- ^ Diagonal predicate
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
