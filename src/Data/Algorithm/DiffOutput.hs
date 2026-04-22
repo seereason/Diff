@@ -176,7 +176,10 @@ data LineRange = LineRange { lrNumbers :: (LineNo, LineNo)
             deriving (Show, Read, Eq, Ord)
 
 -- | Diff operation representing changes to apply.
-data DiffOperation a = Deletion a LineNo
-            | Addition a LineNo
-            | Change a a
-            deriving (Show,Read,Eq,Ord)
+data DiffOperation a
+  = Deletion a LineNo  -- ^ Element deleted on the left input, line number
+                       -- preceding the deleted lines in the right input.
+  | Addition a LineNo  -- ^ Element added from the right input, line number
+                       -- preceding the added lines in the left input.
+  | Change a a         -- ^ Element changed from the left input to the right input.
+  deriving (Show,Read,Eq,Ord)
