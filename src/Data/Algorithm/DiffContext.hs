@@ -87,12 +87,12 @@ unnumber (Numbered _ a) = a
 -- > -k
 getContextDiff ::
   Eq a
-  => Maybe Int -- ^ Number of context elements, 'Nothing' means returning a whole-diff 'Hunk'.
+  => Maybe Int -- ^ Context size. 'Nothing' means returning a whole-diff 'Hunk'.
   -> [a]
   -> [a]
   -> ContextDiff (Numbered a)
-getContextDiff context a b =
-  getContextDiffNumbered context (numbered a) (numbered b)
+getContextDiff contextSize a b =
+  getContextDiffNumbered contextSize (numbered a) (numbered b)
 
 -- | If for some reason you need the line numbers stripped from the
 -- result of 'getContextDiff' for backwards compatibility.
@@ -101,16 +101,19 @@ unNumberContextDiff = fmap (fmap (bimap (fmap unnumber) (fmap unnumber)))
 
 -- | Create a diff made of separate 'Hunk's by reducing the lists of common
 -- elements surrounding each sequence of differing elements to the specified
--- @context@ number. Adjancent hunks end up merged if the list of common elements
--- between them is shorter than twice the @context@.
--- If @context@ is 'Nothing', we get a single hunk with the whole diff.
+-- @contextSize@.
+--
+-- The context size determines when to merge adjacent hunks:
+-- two hunks are merged when the number of common elements between them does not
+-- exceed twice the context size. Furthermore, if @contextSize@ is 'Nothing'
+-- a single hunk with the whole diff is produced.
 getContextDiffNumbered ::
   Eq a
-  => Maybe Int -- ^ Number of context elements, 'Nothing' means returning a whole-diff 'Hunk'.
+  => Maybe Int -- ^ Context size. 'Nothing' means returning a whole-diff 'Hunk'.
   -> [Numbered a]
   -> [Numbered a]
   -> ContextDiff (Numbered a)
-getContextDiffNumbered context a0 b0 =
+getContextDiffNumbered contextSize a0 b0 =
     -- The 'Diff' list is grouped into 'Hunks' that begin and end
     -- with matching ('Both') text, having non-matching ('First' and 'Second')
     -- text in the middle. Note that a non-trivial partition can only happen after
@@ -127,27 +130,27 @@ getContextDiffNumbered context a0 b0 =
       doPrefix [Both _ _] = []
       -- Do the prefix proper.
       doPrefix (Both xs ys : more) =
-          Both (maybe xs (\n -> drop (max 0 (length xs - n)) xs) context)
-               (maybe ys (\n -> drop (max 0 (length ys - n)) ys) context) : doSuffix more
+          Both (maybe xs (\n -> drop (max 0 (length xs - n)) xs) contextSize)
+               (maybe ys (\n -> drop (max 0 (length ys - n)) ys) contextSize) : doSuffix more
       -- Prefix finished, do the diff then the following suffix.
       doPrefix (d : ds) = doSuffix (d : ds)
       -- | Handle the common text following a diff.
       doSuffix :: Hunk a -> Hunk a
       doSuffix [] = []
       -- A trailing suffix.
-      doSuffix [Both xs ys] = [Both (maybe xs (\n -> take n xs) context) (maybe ys (\n -> take n ys) context)]
-      -- Infinite context or common text too short to split.
+      doSuffix [Both xs ys] = [Both (maybe xs (\n -> take n xs) contextSize) (maybe ys (\n -> take n ys) contextSize)]
+      -- Either whole context or common text is too short to split.
       doSuffix (Both xs ys : more)
-          | maybe True (\n -> length xs <= n * 2) context =
+          | maybe True (\n -> length xs <= n * 2) contextSize =
               Both xs ys : doPrefix more
       -- If the common text long enough, split it into a suffix and prefix
       -- (resulting in some elements excluded from the diff in the middle).
       doSuffix (Both xs ys : more) =
-          Both (maybe xs (\n -> take n xs) context) (maybe ys (\n -> take n ys) context)
+          Both (maybe xs (\n -> take n xs) contextSize) (maybe ys (\n -> take n ys) contextSize)
                    -- NOTE: both 'mempty's here are unreachable in practice because:
                    -- 1. The guard above ensures that @context@ is not 'Nothing'
                    -- 2. Both lists have the same length.
-                   : doPrefix (Both (maybe mempty (\n -> drop n xs) context) (maybe mempty (\n -> drop n ys) context) : more)
+                   : doPrefix (Both (maybe mempty (\n -> drop n xs) contextSize) (maybe mempty (\n -> drop n ys) contextSize) : more)
       -- Diff elements are preserved.
       doSuffix (d : ds) = d : doSuffix ds
 
