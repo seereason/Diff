@@ -1,3 +1,4 @@
+{-@ LIQUID "--ple" @-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Algorithm.Diff
@@ -145,6 +146,13 @@ data DL = DL
                      --   'S' steps are stored.
     } deriving (Show, Eq)
 
+-- This refinement type alias represents a 'DL' value with a fixed /D-length/,
+-- which we call a "D-path location node".
+{-@ type DLN D = { x : DL | len (path x) = D } @-}
+
+-- A wave front is a list of 'DL' nodes, all at the same edit distance @D@.
+{-@ type WaveFront D = [DLN D] @-}
+
 -- | Select the furthest-reaching candidate of two 'DL' nodes competing for the
 -- same k-diagonal, as required by the Myers algorithm.
 --
@@ -159,6 +167,7 @@ data DL = DL
 -- and both argument nodes are within the same wave front,
 --
 -- > length (path x) == length (path y)
+{-@ furthestReaching :: x : DL -> y : DL -> {v : DL | v = x || v = y} @-}
 furthestReaching :: DL -> DL -> DL
 furthestReaching x y
   | poi x >= poi y = x
@@ -203,21 +212,28 @@ canDiag eq as bs lena lenb = \ i j ->
 {-@
 dstep
   :: (Nat -> Nat -> Bool)
-  -> {nodes : [DL] | len nodes > 0}
-  -> {v : [DL] | len v = len nodes + 1}
+  -> d : Nat
+  -> {nodes : WaveFront d | len nodes > 0}
+  -> {v : WaveFront (d + 1) | len v = len nodes + 1}
 @-}
 dstep
   :: (Int -> Int -> Bool) -- ^ Diagonal predicate
+  -> Int                  -- ^ The current D-length; used for the static check of wave front invariant.
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D+1
-dstep _ [] = error "dstep: Cannot perform expansion on an empty list of nodes"
-dstep cd (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
+dstep _ _d [] = error "dstep: Cannot perform expansion on an empty list of nodes"
+dstep cd _ (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
   where
+    {-@ hStep :: DLN _d -> DLN (_d + 1) @-}
     hStep node = node {poi = poi node + 1, path = F : path node}
+    {-@ vStep :: DLN _d -> DLN (_d + 1) @-}
     vStep node = node {poj = poj node + 1, path = S : path node}
     -- Merge vertical step of previous node with horizontal step of next node,
     -- selecting the furthest-reaching candidate for each shared k-diagonal,
     -- and extend it along matching elements.
+    {-@ stepAndMerge :: prev : DLN _d
+                     -> rest : WaveFront _d
+                     -> {v : WaveFront (_d + 1) | len v = len rest + 1} / [len rest] @-}
     stepAndMerge :: DL -> [DL] -> [DL]
     stepAndMerge prev [] = [addsnake cd $ vStep prev]
     stepAndMerge prev (next:rest) =
@@ -270,10 +286,11 @@ addsnake cd dl
 -- unchanged.
 ses :: (a -> b -> Bool) -> [a] -> [b] -> [DI]
 ses eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
-            concat . iterate (dstep cd) . (:[]) . addsnake cd $
+            concat . iterate (uncurry (dstep cd) . withD) . (:[]) . addsnake cd $
             DL {poi=0,poj=0,path=[]}
             where cd = canDiag eq as bs lena lenb
                   lena = length as; lenb = length bs
+                  withD xs = (length . path . head $ xs, xs)
 
 -- | Takes two lists and returns a list of differences between them. This is
 -- 'getDiffBy' with '==' used as predicate.
