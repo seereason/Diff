@@ -19,13 +19,17 @@ import Data.List
 -- | Converts 'Diff's to 'DiffOperation's. 'First' and 'Second'
 -- ocurrances are converted to 'Addition' and 'Deletion', respectively, while
 -- consecutive ocurrances of them are replaced by a 'Change'.
+{-@ diffToLineRanges :: [LineDiff] -> [DiffOperation ValidLineRange] @-}
 diffToLineRanges :: [Diff [String]] -> [DiffOperation LineRange]
 diffToLineRanges = toLineRange 1 1
    where
           -- | In @toLineRange x y ds@, @x@ is the index of the current string in the
           -- left input of the diff @ds@, and @y@ is the index of the corresponding
           -- string in the right input of the diff @ds@.
-          {-@ toLineRange :: Int -> Int -> diffs : [Diff[String]] -> [DiffOperation LineRange] / [len diffs, 0] @-}
+          {-@ toLineRange :: Nat1
+                          -> Nat1
+                          -> diffs : [LineDiff]
+                          -> [DiffOperation ValidLineRange] / [len diffs, 0] @-}
           toLineRange :: Int -> Int -> [Diff [String]] -> [DiffOperation LineRange]
           toLineRange _ _ []=[]
           -- If the lines are the same, we just move forward.
@@ -46,7 +50,13 @@ diffToLineRanges = toLineRange 1 1
                 let diff = Deletion (mkLineRange leftLine lsF) (rightLine-1)
                 in  diff : toLineRange (leftLine + length lsF) rightLine rs
           -- | Build 'Change's from adjacent additions and deletions.
-          {-@ toChange :: Int -> Int -> [String] -> [String] -> diffs : [Diff [String]] -> [DiffOperation LineRange] / [len diffs, 1] @-}
+          {-@ toChange :: Nat1
+                       -> Nat1
+                       -> NonEmpty String
+                       -> NonEmpty String
+                       -> diffs : [LineDiff]
+                       -> [DiffOperation ValidLineRange]
+                       / [len diffs, 1] @-}
           toChange :: Int -- ^ Current left line number.
                    -> Int -- ^ Current right line number.
                    -> [String] -- ^ Lines from the 'First' list (corresponding to deletions).
@@ -57,6 +67,7 @@ diffToLineRanges = toLineRange 1 1
                 Change (mkLineRange leftLine lsF) (mkLineRange rightLine lsS)
                     : toLineRange (leftLine + length lsF) (rightLine + length lsS) rs
 
+{-@ ppDiff :: [LineDiff] -> String @-}
 -- | Pretty print the differences. The output is similar to the output of the @diff@ utility.
 --
 -- > > putStr (ppDiff (getGroupedDiff ["a","b","c","d","e"] ["a","c","d","f"]))
@@ -176,14 +187,24 @@ type LineNo = Int
 -- > snd lrNumbers - fst lrNumbers + 1 == length lrContents
 --
 -- which imply @lrContents@ cannot be empty.
+{-@
+data LineRange = LineRange { lrNumbers :: (LineNo, LineNo)
+                           , lrContents :: [String]
+                           }
+@-}
 data LineRange = LineRange { lrNumbers :: (LineNo, LineNo)
                            , lrContents :: [String]
                            }
             deriving (Show, Read, Eq, Ord)
 
+{-@ predicate validRange Start End ContentLenght = Start >= 0 && End >= 0 && Start <= End && ContentLenght = End - Start + 1 @-}
+
+{-@ type ValidLineRange = {r : LineRange | validRange (fst (lrNumbers r)) (snd (lrNumbers r)) (len (lrContents r))} @-}
+
 -- | Smart constructor for 'LineRange' that computes the end line from the
 -- start line and the content length, guaranteeing that its content length and
 -- range match.
+{-@ mkLineRange :: Nat -> {contents : [String] | len contents >= 1} -> ValidLineRange @-}
 mkLineRange :: Int -> [String] -> LineRange
 mkLineRange start contents = LineRange (start, start + length contents - 1) contents
 
