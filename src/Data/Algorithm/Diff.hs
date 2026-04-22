@@ -150,8 +150,24 @@ data DL = DL
 -- which we call a "D-path location node".
 {-@ type DLN D = { x : DL | len (path x) = D } @-}
 
--- A wave front is a list of 'DL' nodes, all at the same edit distance @D@.
-{-@ type WaveFront D = [DLN D] @-}
+{-@ inline _kdiag @-}
+-- | Computes the k-diagonal of a node.
+-- Used in LiquidHaskell logic as an expression.
+_kdiag :: DL -> Int
+_kdiag dl = poi dl - poj dl
+
+{-@ reflect _wfDiags @-}
+{-@ _wfDiags :: Int -> xs : [DL] -> Bool / [len xs] @-}
+-- | Checks if succesive nodes of a wave front lie within k-diagonals
+-- differing by 2 as described in the Myers algorithm.
+-- Used in LiquidHaskell logic as a predicate.
+_wfDiags :: Int -> [DL] -> Bool
+_wfDiags _ [] = True
+_wfDiags k (dl:dls) = poi dl - poj dl == k && _wfDiags (k - 2) dls
+
+-- A wave front is a list of 'DL' nodes, all at the same edit distance @D@,
+-- with k-diagonals @D@, @D−2@, …, @-D+2@, @-D@.
+{-@ type WaveFront D = {xs : [DLN D] | _wfDiags D xs} @-}
 
 -- | Select the furthest-reaching candidate of two 'DL' nodes competing for the
 -- same k-diagonal, as required by the Myers algorithm.
@@ -167,7 +183,9 @@ data DL = DL
 -- and both argument nodes are within the same wave front,
 --
 -- > length (path x) == length (path y)
-{-@ furthestReaching :: x : DL -> y : DL -> {v : DL | v = x || v = y} @-}
+{-@ furthestReaching ::  x : DL
+                     -> {y : DL | _kdiag x = _kdiag y}
+                     -> {v : DL | v = x || v = y} @-}
 furthestReaching :: DL -> DL -> DL
 furthestReaching x y
   | poi x >= poi y = x
@@ -224,16 +242,17 @@ dstep
 dstep _ _d [] = error "dstep: Cannot perform expansion on an empty list of nodes"
 dstep cd _ (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
   where
-    {-@ hStep :: DLN _d -> DLN (_d + 1) @-}
+    {-@ hStep :: x : DLN _d -> {v : DLN (_d + 1) | _kdiag v = _kdiag x + 1} @-}
     hStep node = node {poi = poi node + 1, path = F : path node}
-    {-@ vStep :: DLN _d -> DLN (_d + 1) @-}
+    {-@ vStep :: x : DLN _d -> {v : DLN (_d + 1) | _kdiag v = _kdiag x - 1} @-}
     vStep node = node {poj = poj node + 1, path = S : path node}
     -- Merge vertical step of previous node with horizontal step of next node,
     -- selecting the furthest-reaching candidate for each shared k-diagonal,
     -- and extend it along matching elements.
-    {-@ stepAndMerge :: prev : DLN _d
-                     -> rest : WaveFront _d
-                     -> {v : WaveFront (_d + 1) | len v = len rest + 1} / [len rest] @-}
+     {-@ stepAndMerge :: prev : DLN _d
+                     -> {rest : [DLN _d] | _wfDiags (_kdiag prev - 2) rest}
+                     -> {v : [DLN (_d+1)] | _wfDiags (_kdiag prev - 1) v && len v = len rest + 1}
+                     / [len rest] @-}
     stepAndMerge :: DL -> [DL] -> [DL]
     stepAndMerge prev [] = [addsnake cd $ vStep prev]
     stepAndMerge prev (next:rest) =
@@ -248,7 +267,7 @@ dstep cd _ (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
 -- @(poi dl, poj dl)@, this function advances both 'poi' and 'poj' as long
 -- as consecutive elements match, leaving 'path' unchanged (diagonal moves
 -- are not recorded as edit steps).
-{-@ addsnake :: (Nat -> Nat -> Bool) -> x : DL -> {v : DL | path v == path x } @-}
+{-@ addsnake :: (Nat -> Nat -> Bool) -> x : DL -> {v : DL | path v == path x && _kdiag v = _kdiag x} @-}
 addsnake :: (Int -> Int -> Bool) -> DL -> DL
 addsnake cd dl
     | cd pi pj = addsnake cd $
