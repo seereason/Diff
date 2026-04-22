@@ -20,6 +20,7 @@ library
   -- for checking the build only.
   other-modules:
     Data.Algorithm.Diff
+    Data.Algorithm.Diff.Refinement
     Data.Algorithm.Diff.Type
     Data.Algorithm.DiffOutput
     Data.Algorithm.DiffContext

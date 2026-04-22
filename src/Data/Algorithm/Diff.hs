@@ -1,4 +1,8 @@
 {-@ LIQUID "--ple" @-}
+-- Import of the 'Data.Algorithm.Diff.Refinement' module is required for LiquidHaskell
+-- specifications in this module, but is unused in the actual code.
+-- The following GHC option suppresses the unused import warning.
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Algorithm.Diff
@@ -72,6 +76,8 @@ module Data.Algorithm.Diff
 import Prelude hiding (pi)
 import Data.Array (listArray, (!))
 import Data.Algorithm.Diff.Type
+import Data.Algorithm.Diff.Refinement (fst3, snd3, thd3, headIsFirst,
+                                        headIsSecond, headIsBoth, noStuttering)
 
 -- | /Diff Instruction/ — an internal enum recording the direction of a single
 -- non-diagonal edge traversed in the Myers edit graph. Every non-diagonal
@@ -305,6 +311,8 @@ getDiff = getDiffBy (==)
 --
 -- > > getGroupedDiff "abcde" "acdf"
 -- > [Both "a" "a",First "b",Both "cd" "cd",First "e",Second "f"]
+{-@ getGroupedDiff :: Eq a => [a] -> [a]
+                           -> {v:[GroupedDiff a a] | noStuttering v} @-}
 getGroupedDiff :: (Eq a) => [a] -> [a] -> [Diff [a]]
 getGroupedDiff = getGroupedDiffBy (==)
 
@@ -324,20 +332,59 @@ getDiffBy eq a b = markup a b . reverse $ ses eq a b
 --
 -- Postcondition: the output list is guaranteed to be /chunked/. i.e. no two adjacent
 -- elements share the same constructor.
+{-@ getGroupedDiffBy :: (a -> b -> Bool) -> [a] -> [b]
+                     -> {vs : [GroupedDiff a b] | noStuttering vs} @-}
 getGroupedDiffBy :: (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff [a] [b]]
-getGroupedDiffBy eq a b = go $ getDiffBy eq a b
-    where go (First x  : xs) = let (fs, rest) = goFirsts  xs in First  (x:fs)     : go rest
-          go (Second x : xs) = let (fs, rest) = goSeconds xs in Second (x:fs)     : go rest
-          go (Both x y : xs) = let (fs, rest) = goBoth    xs
-                                   (fxs, fys) = unzip fs
-                               in Both (x:fxs) (y:fys) : go rest
-          go [] = []
+getGroupedDiffBy eq a b = groupDiff $ getDiffBy eq a b
+  where
+    {-@ groupDiff :: xs : [PolyDiff a b]
+                  -> {vs : [GroupedDiff a b] | noStuttering vs
+                      // The following predicates allow LiquidHaskell keep track
+                      // of the head constructor in each recursive call.
+                      && (headIsFirst xs  <=> headIsFirst vs)
+                      && (headIsSecond xs <=> headIsSecond vs)
+                      && (headIsBoth xs   <=> headIsBoth vs)} @-}
+    groupDiff :: [PolyDiff a b] -> [PolyDiff [a] [b]]
+    groupDiff (First x  : xs) = let (fs, rest) = leadingFirsts  xs
+                                 in First (x:fs) : groupDiff rest
+    groupDiff (Second x : xs) = let (sc, rest) = leadingSeconds xs
+                                 in Second (x:sc) : groupDiff rest
+    groupDiff (Both x y : xs) = let (bxs, bys, rest) = leadingBoths xs
+                                 in Both (x:bxs) (y:bys) : groupDiff rest
+    groupDiff [] = []
 
-          goFirsts  (First x  : xs) = let (fs, rest) = goFirsts  xs in (x:fs, rest)
-          goFirsts  xs = ([],xs)
+    {-@ leadingFirsts :: xs : [PolyDiff a b]
+                      -> {v : ([a], [PolyDiff a b])
+                            | not (headIsFirst (snd v))
+                           // Here, and in the analogous helpers,
+                           // the length comparison is needed for termination check.
+                           && len (snd v) <= len xs
+                           && (headIsSecond xs => headIsSecond (snd v))
+                           && (headIsBoth xs   => headIsBoth (snd v))} @-}
+    leadingFirsts :: [PolyDiff a b] -> ([a], [PolyDiff a b])
+    leadingFirsts (First y : diffs) = let (firsts, rest) = leadingFirsts diffs
+                                       in (y:firsts, rest)
+    leadingFirsts diffs = ([],diffs)
 
-          goSeconds (Second x : xs) = let (fs, rest) = goSeconds xs in (x:fs, rest)
-          goSeconds xs = ([],xs)
+    {-@ leadingSeconds :: xs : [PolyDiff a b]
+                       -> {v : ([b], [PolyDiff a b])
+                             | not (headIsSecond (snd v))
+                            && len (snd v) <= len xs
+                            && (headIsFirst xs => headIsFirst (snd v))
+                            && (headIsBoth xs  => headIsBoth (snd v))} @-}
+    leadingSeconds :: [PolyDiff a b] -> ([b], [PolyDiff a b])
+    leadingSeconds (Second y : diffs) = let (seconds, rest) = leadingSeconds diffs
+                                         in (y:seconds, rest)
+    leadingSeconds diffs = ([],diffs)
 
-          goBoth    (Both x y : xs) = let (fs, rest) = goBoth xs    in ((x,y):fs, rest)
-          goBoth    xs = ([],xs)
+    {-@ leadingBoths :: xs : [PolyDiff a b]
+                     -> {v : ([a], [b], [PolyDiff a b])
+                           | not (headIsBoth (thd3 v))
+                          && len (thd3 v) <= len xs
+                          && (headIsFirst xs  => headIsFirst (thd3 v))
+                          && (headIsSecond xs => headIsSecond (thd3 v))
+                          && len (fst3 v) == len (snd3 v)} @-}
+    leadingBoths :: [PolyDiff a b] -> ([a], [b], [PolyDiff a b])
+    leadingBoths (Both w z : diffs) = let (as, bs, rest) = leadingBoths diffs
+                                       in (w:as, z:bs, rest)
+    leadingBoths diffs = ([], [], diffs)
