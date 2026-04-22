@@ -16,7 +16,9 @@ import Text.PrettyPrint hiding ((<>))
 import Data.Char
 import Data.List
 
--- | Converts 'Diff's to 'DiffOperation's.
+-- | Converts 'Diff's to 'DiffOperation's. 'First' and 'Second'
+-- ocurrances are converted to 'Addition' and 'Deletion', respectively, while
+-- consecutive ocurrances of them are replaced by a 'Change'.
 diffToLineRanges :: [Diff [String]] -> [DiffOperation LineRange]
 diffToLineRanges = toLineRange 1 1
    where
