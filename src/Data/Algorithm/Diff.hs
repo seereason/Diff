@@ -232,6 +232,7 @@ dstep cd (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
 -- @(poi dl, poj dl)@, this function advances both 'poi' and 'poj' as long
 -- as consecutive elements match, leaving 'path' unchanged (diagonal moves
 -- are not recorded as edit steps).
+{-@ addsnake :: (Nat -> Nat -> Bool) -> x : DL -> {v : DL | path v == path x } @-}
 addsnake :: (Int -> Int -> Bool) -> DL -> DL
 addsnake cd dl
     | cd pi pj = addsnake cd $
