@@ -146,10 +146,9 @@ getContextDiffNumbered contextSize a0 b0 =
       -- If the common text long enough, split it into a suffix and prefix
       -- (resulting in some elements excluded from the diff in the middle).
       doSuffix (Both xs ys : more) =
+          -- NOTE: the guard above ensures that the following 'maybe's
+          -- default values are unreachable and result in non-empty lists.
           Both (maybe xs (\n -> take n xs) contextSize) (maybe ys (\n -> take n ys) contextSize)
-                   -- NOTE: both 'mempty's here are unreachable in practice because:
-                   -- 1. The guard above ensures that @context@ is not 'Nothing'
-                   -- 2. Both lists have the same length.
                    : doPrefix (Both (maybe mempty (\n -> drop n xs) contextSize) (maybe mempty (\n -> drop n ys) contextSize) : more)
       -- Diff elements are preserved.
       doSuffix (d : ds) = d : doSuffix ds
