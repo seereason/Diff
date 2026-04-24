@@ -29,6 +29,10 @@ import Text.PrettyPrint (Doc, text, empty, hcat)
 type ContextDiff c = [Hunk c]
 
 -- | A 'Hunk' is a list of adjacent 'Diff's.
+--
+-- No two consecutive elements in a 'Hunk' are both applications
+-- of 'First', 'Second', or 'Both', i.e. the list does not stutter
+-- on 'Diff' constructors.
 type Hunk c = [Diff [c]]
 
 
@@ -99,9 +103,8 @@ getContextDiff contextSize a b =
 unNumberContextDiff :: ContextDiff (Numbered a) -> ContextDiff a
 unNumberContextDiff = fmap (fmap (bimap (fmap unnumber) (fmap unnumber)))
 
--- | Create a diff made of separate 'Hunk's by reducing the lists of common
--- elements surrounding each sequence of differing elements to the specified
--- @contextSize@.
+-- | Create a diff of separate 'Hunk's, each containing a sequence
+-- of differing elements surrounded by common elements for context.
 --
 -- The context size determines when to merge adjacent hunks:
 -- two hunks are merged when the number of common elements between them does not
@@ -124,9 +127,20 @@ getContextDiffNumbered contextSize a0 b0 =
       isBoth (Both _ _) = True
       isBoth _ = False
       -- | Handle the common text leading up to a diff.
+      --
+      -- The @a@ elements in @doPrefix h@ are a subset of those in @h@,
+      -- in the same order. Additionaly, 'First' and 'Second' diffs
+      -- are identical in both lists.
+      --
+      -- The difference between input and output is that some 'Both' diffs might
+      -- be split into two other 'Both' diffs. This hapṕens when their contents
+      -- are too large compared with the contex size, resulting in some @a@
+      -- elements being dropped.
       doPrefix :: Hunk a -> Hunk a
       doPrefix [] = []
       -- Trailing common elements are no prefix.
+      -- This case corresponds to when both input lists are identical, so the
+      -- resulting 'ContextDiff' is empty.
       doPrefix [Both _ _] = []
       -- Do the prefix proper.
       doPrefix (Both xs ys : more) =
@@ -135,6 +149,9 @@ getContextDiffNumbered contextSize a0 b0 =
       -- Prefix finished, do the diff then the following suffix.
       doPrefix (d : ds) = doSuffix (d : ds)
       -- | Handle the common text following a diff.
+      --
+      -- Precondition: The input does not start with a 'Both' diff. Otherwise,
+      -- it behaves like @doPrefix@.
       doSuffix :: Hunk a -> Hunk a
       doSuffix [] = []
       -- A trailing suffix.
