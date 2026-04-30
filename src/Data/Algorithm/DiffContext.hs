@@ -8,7 +8,7 @@
 -- Portability :  portable
 -- Author      :  David Fox (ddssff at the email service from google)
 --
--- Generates a grouped diff with merged runs, and outputs them in the manner of diff -u
+-- Generates a grouped diff with merged runs, and outputs them in the manner of @diff -u@.
 -----------------------------------------------------------------------------
 module Data.Algorithm.DiffContext
     ( ContextDiff, Hunk
@@ -22,19 +22,27 @@ module Data.Algorithm.DiffContext
     ) where
 
 import Data.Algorithm.Diff (PolyDiff(..), Diff, getGroupedDiff)
--- import Data.List (groupBy)
 import Data.Bifunctor
 import Text.PrettyPrint (Doc, text, empty, hcat)
 
+-- | A diff consisting of disjoint 'Hunk's.
 type ContextDiff c = [Hunk c]
+
+-- | A 'Hunk' is a list of adjacent 'Diff's.
+--
+-- No two consecutive elements in a 'Hunk' are both applications
+-- of 'First', 'Second', or 'Both', i.e. the list does not stutter
+-- on 'Diff' constructors.
 type Hunk c = [Diff [c]]
 
--- | A version of 'groupBy' that does not assume the argument function
--- is transitive.  This is used to partition the 'Diff' list into
--- segments that begin and end with matching ('Both') text, with and
--- have non-matching ('First' and 'Second') text in the middle.
+
+-- | Groups elements so that consecutive elements in a group satisfy the predicate.
+-- This is unlike 'Data.List.groupBy' where grouped elements are only guaranteed to
+-- satisfy the predicate w.r.t. the first element of the group.
 --
---     > let notBoth1 a b = not (a == 1 || b == 1) in
+-- For instance, to split the input where there are two consecutive `1`s:
+--
+--     > let notBoth1 a b = not (a == 1 && b == 1) in
 --     >
 --     > groupBy' notBoth1 [1,1,2,3,1,1,4,5,6,1]
 --     > [[1],[1,2,3,1],[1,4,5,6,1]]
@@ -83,46 +91,86 @@ unnumber (Numbered _ a) = a
 -- > -k
 getContextDiff ::
   Eq a
-  => Maybe Int -- ^ Number of context elements, Nothing means infinite
+  => Maybe Int -- ^ Context size. 'Nothing' means returning a whole-diff 'Hunk'.
   -> [a]
   -> [a]
   -> ContextDiff (Numbered a)
-getContextDiff context a b =
-  getContextDiffNumbered context (numbered a) (numbered b)
+getContextDiff contextSize a b =
+  getContextDiffNumbered contextSize (numbered a) (numbered b)
 
 -- | If for some reason you need the line numbers stripped from the
--- result of getContextDiff for backwards compatibility.
+-- result of 'getContextDiff' for backwards compatibility.
 unNumberContextDiff :: ContextDiff (Numbered a) -> ContextDiff a
 unNumberContextDiff = fmap (fmap (bimap (fmap unnumber) (fmap unnumber)))
 
+-- | Create a diff of separate 'Hunk's, each containing a sequence
+-- of differing elements surrounded by common elements for context.
+--
+-- The context size determines when to merge adjacent hunks:
+-- two hunks are merged when the number of common elements between them does not
+-- exceed twice the context size. Furthermore, if @contextSize@ is 'Nothing'
+-- a single hunk with the whole diff is produced.
 getContextDiffNumbered ::
   Eq a
-  => Maybe Int -- ^ Number of context elements, Nothing means infinite
+  => Maybe Int -- ^ Context size. 'Nothing' means returning a whole-diff 'Hunk'.
   -> [Numbered a]
   -> [Numbered a]
   -> ContextDiff (Numbered a)
-getContextDiffNumbered context a0 b0 =
+getContextDiffNumbered contextSize a0 b0 =
+    -- The 'Diff' list is grouped into 'Hunks' that begin and end
+    -- with matching ('Both') text, having non-matching ('First' and 'Second')
+    -- text in the middle. Note that a non-trivial partition can only happen after
+    -- the matching text has been reduced to become consecutive 'Both' values
+    -- corresponding to a hunk's suffix and the following hunk prefix.
     groupBy' (\a b -> not (isBoth a && isBoth b)) $ doPrefix $ getGroupedDiff a0 b0
     where
       isBoth (Both _ _) = True
       isBoth _ = False
-      -- Handle the common text leading up to a diff.
+      -- | Handle the common text leading up to a diff.
+      --
+      -- Postcondition: The @a@ elements in @doPrefix h@ are a subset of those in @h@,
+      -- in the same order. Additionaly, 'First' and 'Second' diffs
+      -- are identical in both lists.
+      --
+      -- The difference between input and output is that some 'Both' diffs might
+      -- be split into two other 'Both' diffs. This happens when their contents
+      -- are too large compared with the contex size, resulting in some @a@
+      -- elements being dropped.
+      doPrefix :: Hunk a -> Hunk a
       doPrefix [] = []
+      -- Trailing common elements are no prefix.
+      -- This case corresponds to when both input lists are identical, so the
+      -- resulting 'ContextDiff' is empty.
       doPrefix [Both _ _] = []
+      -- Do the prefix and then make the suffix.
       doPrefix (Both xs ys : more) =
-          Both (maybe xs (\n -> drop (max 0 (length xs - n)) xs) context)
-               (maybe ys (\n -> drop (max 0 (length ys - n)) ys) context) : doSuffix more
-      -- Prefix finished, do the diff then the following suffix
+          Both (maybe xs (\n -> drop (max 0 (length xs - n)) xs) contextSize)
+               (maybe ys (\n -> drop (max 0 (length ys - n)) ys) contextSize) : doSuffix more
+      -- Prefix finished, do the diff then the following suffix.
       doPrefix (d : ds) = doSuffix (d : ds)
-      -- Handle the common text following a diff.
+      -- | Handle the common text following a diff.
+      --
+      -- Precondition: The input does not start with a 'Both' diff. Otherwise,
+      -- it behaves like @doPrefix@.
+      doSuffix :: Hunk a -> Hunk a
       doSuffix [] = []
-      doSuffix [Both xs ys] = [Both (maybe xs (\n -> take n xs) context) (maybe ys (\n -> take n ys) context)]
+      -- A trailing suffix.
+      doSuffix [Both xs ys] = [Both (maybe xs (\n -> take n xs) contextSize) (maybe ys (\n -> take n ys) contextSize)]
+      -- Either whole context or common text is too short to split.
       doSuffix (Both xs ys : more)
-          | maybe True (\n -> length xs <= n * 2) context =
+          | maybe True (\n -> length xs <= n * 2) contextSize =
               Both xs ys : doPrefix more
+      -- If the common text is too short compared with the context,
+      -- we preserve it and continue. As the following element cannot be a 'Both'
+      -- as well, this effectively places the common text in the inner part of the diff.
+      -- Otherwise, we split it into a suffix and prefix
+      -- (resulting in some elements excluded from the diff in the middle).
       doSuffix (Both xs ys : more) =
-          Both (maybe xs (\n -> take n xs) context) (maybe ys (\n -> take n ys) context)
-                   : doPrefix (Both (maybe mempty (\n -> drop n xs) context) (maybe mempty (\n -> drop n ys) context) : more)
+          -- NOTE: the guard above ensures that the following 'maybe's
+          -- default values are unreachable and result in non-empty lists.
+          Both (maybe xs (\n -> take n xs) contextSize) (maybe ys (\n -> take n ys) contextSize)
+                   : doPrefix (Both (maybe mempty (\n -> drop n xs) contextSize) (maybe mempty (\n -> drop n ys) contextSize) : more)
+      -- 'First' and 'Second' elements are no suffix, preserve them and continue looking.
       doSuffix (d : ds) = d : doSuffix ds
 
 -- | Pretty print a ContextDiff in the manner of diff -u.
