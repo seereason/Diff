@@ -128,12 +128,12 @@ getContextDiffNumbered contextSize a0 b0 =
       isBoth _ = False
       -- | Handle the common text leading up to a diff.
       --
-      -- The @a@ elements in @doPrefix h@ are a subset of those in @h@,
+      -- Postcondition: The @a@ elements in @doPrefix h@ are a subset of those in @h@,
       -- in the same order. Additionaly, 'First' and 'Second' diffs
       -- are identical in both lists.
       --
       -- The difference between input and output is that some 'Both' diffs might
-      -- be split into two other 'Both' diffs. This hapṕens when their contents
+      -- be split into two other 'Both' diffs. This happens when their contents
       -- are too large compared with the contex size, resulting in some @a@
       -- elements being dropped.
       doPrefix :: Hunk a -> Hunk a
@@ -142,7 +142,7 @@ getContextDiffNumbered contextSize a0 b0 =
       -- This case corresponds to when both input lists are identical, so the
       -- resulting 'ContextDiff' is empty.
       doPrefix [Both _ _] = []
-      -- Do the prefix proper.
+      -- Do the prefix and then make the suffix.
       doPrefix (Both xs ys : more) =
           Both (maybe xs (\n -> drop (max 0 (length xs - n)) xs) contextSize)
                (maybe ys (\n -> drop (max 0 (length ys - n)) ys) contextSize) : doSuffix more
@@ -160,14 +160,17 @@ getContextDiffNumbered contextSize a0 b0 =
       doSuffix (Both xs ys : more)
           | maybe True (\n -> length xs <= n * 2) contextSize =
               Both xs ys : doPrefix more
-      -- If the common text long enough, split it into a suffix and prefix
+      -- If the common text is too short compared with the context,
+      -- we preserve it and continue. As the following element cannot be a 'Both'
+      -- as well, this effectively places the common text in the inner part of the diff.
+      -- Otherwise, we split it into a suffix and prefix
       -- (resulting in some elements excluded from the diff in the middle).
       doSuffix (Both xs ys : more) =
           -- NOTE: the guard above ensures that the following 'maybe's
           -- default values are unreachable and result in non-empty lists.
           Both (maybe xs (\n -> take n xs) contextSize) (maybe ys (\n -> take n ys) contextSize)
                    : doPrefix (Both (maybe mempty (\n -> drop n xs) contextSize) (maybe mempty (\n -> drop n ys) contextSize) : more)
-      -- Diff elements are preserved.
+      -- 'First' and 'Second' elements are no suffix, preserve them and continue looking.
       doSuffix (d : ds) = d : doSuffix ds
 
 -- | Pretty print a ContextDiff in the manner of diff -u.
