@@ -79,6 +79,7 @@ import Data.Algorithm.Diff.Type
 import Data.Algorithm.Diff.Refinement (fst3, snd3, thd3, headIsFirst,
                                         headIsSecond, headIsBoth, noStuttering,
                                         withProof)
+import Data.Foldable (find)
 
 -- | /Diff Instruction/ — an internal enum recording the direction of a single
 -- non-diagonal edge traversed in the Myers edit graph. Every non-diagonal
@@ -412,37 +413,37 @@ addsnake lena lenb cd dl
 -- | Compute shortest edit script (SES), as the minimum sequence of 'DI' edit
 -- steps that transforms @as@ into @bs@, returned in reverse order.
 --
--- @ses eq as bs@ runs the Myers O(ND) diff algorithm following
--- a five-step pipeline:
+-- @ses eq as bs@ runs the Myers O(ND) diff algorithm:
 --
--- 1. __Seed__: create an initial 0-path wave front @[addsnake cd (DL 0 0 [])]@
+-- 1. __Seed__: create an initial 0-path wave front @[addsnake lena lenb cd (DL 0 0 [])]@
 --    having a single node on the tip of the longest origin-sourced snake.
--- 2. __Iterate__: apply 'dstep' repeatedly via 'iterate', producing an
---    infinite list of wave fronts (one per edit distance D = 0, 1, 2, …).
--- 3. __Flatten__: 'concat' all wave fronts into a single stream of 'DL' nodes.
--- 4. __Find__: 'dropWhile' skips nodes until one reaches @(lena, lenb)@ — the
---    bottom-right corner of the edit graph — which is the terminal node of a
---    shortest edit script.
--- 5. __Extract__: 'head' returns that node; its 'path' field carries the edit
+-- 2. __Search__: for each wave front at edit distance \( D = 0, 1, \ldots \),
+--    check whether any node has reached the goal @(lena, lenb)@. If not,
+--    apply 'dstep' to advance to edit distance \( D+1 \).
+-- 3. __Extract__: the first goal node's 'path' field carries the edit
 --    trace in reverse order.
 --
--- This implementation is purely functional: rather than updating a shared
--- diagonal frontier array in place, as in the original paper, it builds a new
--- list of 'DL' nodes for each value of \( D \) and concatenates them into
--- a single lazy stream. This is simpler but carries a larger per-node overhead:
--- each 'DL' holds its own edit trace as a @['DI']@ list that structurally
--- shares its tail with the parent node's trace (consing one step reuses the
--- existing spine), rather than the paper's single-integer-per-diagonal
--- representation. The asymptotic time
+-- This implementation deviates from the paper in the folowing way:
+-- rather than updating a shared diagonal frontier array in place,
+-- as in the original paper, it builds a new list of 'DL' nodes
+-- for each value of \( D \). This is simpler but carries a
+-- larger per-node overhead: each 'DL' holds its own edit trace as a @['DI']@
+-- list that structurally shares its tail with the parent node's trace (consing
+-- one step reuses the existing spine), rather than the paper's
+-- single-integer-per-diagonal representation. The asymptotic time
 -- and space complexity — \( O(ND) \) and \( O(D^2) \) respectively — is
 -- unchanged.
 ses :: (a -> b -> Bool) -> [a] -> [b] -> [DI]
-ses eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
-            concat . iterate (uncurry (dstep lena lenb cd) . withD) . (:[]) . addsnake lena lenb cd $
-            DL {poi=0,poj=0,path=[]}
+ses eq as bs = search 0 [addsnake lena lenb cd (DL 0 0 [])]
             where cd = canDiag eq as bs lena lenb
                   lena = length as; lenb = length bs
-                  withD xs = (length . path . head $ xs, xs)
+                  search :: Int -> [DL] -> [DI]
+                  search _ [] = error "ses: The search must have a seed node"
+                  search d wf = case findEndpoint lena lenb wf of
+                      Just p  -> path p
+                      Nothing -> search (d + 1) (dstep lena lenb cd d wf)
+                  findEndpoint :: Int -> Int -> [DL] -> Maybe DL
+                  findEndpoint i j = find (endPoint i j)
 
 -- | Takes two lists and returns a list of differences between them. This is
 -- 'getDiffBy' with '==' used as predicate.
