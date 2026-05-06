@@ -245,7 +245,9 @@ dstep
 -- All could be replaced by underscores after fixing:
 -- https://github.com/ucsd-progsys/liquidhaskell/issues/2704
 dstep lena lenb _ _d [] = error "dstep: Cannot perform expansion on an empty list of nodes"
-dstep lena lenb cd _ (dl:dls) = addsnake lena lenb cd (hStep dl) : stepAndMerge dl dls
+dstep lena lenb cd _ (dl:dls) =
+  if poi dl >= lena then stepAndMerge dl dls
+  else addsnake lena lenb cd (hStep dl) : stepAndMerge dl dls
   where
     {-@ hStep :: x : DLN _d -> {v : DLN (_d + 1) | _kdiag v = _kdiag x + 1} @-}
     hStep node = node {poi = poi node + 1, path = F : path node}
@@ -258,10 +260,26 @@ dstep lena lenb cd _ (dl:dls) = addsnake lena lenb cd (hStep dl) : stepAndMerge 
                      -> {rest : [DLN _d] | _wfDiags (_kdiag prev - 2) rest}
                      -> {v : [DLN (_d+1)] | _wfDiags (_kdiag prev - 1) v && len v = len rest + 1}
                      / [len rest] @-}
-    stepAndMerge :: DL -> [DL] -> [DL]
-    stepAndMerge prev [] = [addsnake lena lenb cd $ vStep prev]
-    stepAndMerge prev (next:rest) =
-      addsnake lena lenb cd (furthestReaching (vStep prev) (hStep next)) : stepAndMerge next rest
+    stepAndMerge prev nodes =
+      -- When a node lying on the bottom boundary is found on the wave front
+      -- all upcoming nodes are discarted because their in-bound childs would
+      -- eventually need to cross the former's diagonal (in /more/ steps)
+      -- to reach the endpoint, and thus are not SES candidates.
+      if poj prev >= lenb then []
+      else case nodes of
+        [] -> [addsnake lena lenb cd $ vStep prev]
+        (next:rest) ->
+            -- HACK: This check saves us from an unneeded call to furthestReaching,
+            -- as the horizontal child of the next node would be out-of-bounds,
+            -- but in fact we could drop this child node altogether because
+            -- the next node being on the right border means all previous nodes
+            -- would need to cross the next node's diagonal in more steps,
+            -- and thus cannot compete to the endpoint.
+            -- However, this would result in a negligible performance gain
+            -- and the loss of the wave front diagonal invariant,
+            -- so we keep it for now.
+            if poi next >= lena then addsnake lena lenb cd (vStep prev) : stepAndMerge next rest
+            else addsnake lena lenb cd (furthestReaching (vStep prev) (hStep next)) : stepAndMerge next rest
 
 -- | Follow a /snake/ from the current position of a 'DL' node.
 --
