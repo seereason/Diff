@@ -169,6 +169,19 @@ furthestReaching x y
   | poi x >= poi y = x
   | otherwise      = y
 
+-- * Proving the algorithm termination in Liquid Haskell
+--
+-- The original algorithm is known to terminate because a wave front /eventually/ reaches the 'endPoint'.
+-- To prove this, both inputs lengths are threaded within phantom parameters throughout the implementation.
+-- In essence, both lengths are used to encode the edit grid and its end point.
+
+{-@ inline _manhattanDistance @-}
+{-@ _manhattanDistance :: lena : Nat -> lenb : Nat -> {i : Nat | lena >= i} -> { j : Nat | lenb >= j} -> Nat @-}
+_manhattanDistance :: Int -> Int -> Int -> Int -> Int
+_manhattanDistance lena lenb i j  = lena - i + lenb - j
+
+{-@ type DiagPred M N = i : Nat -> j : Nat -> {b : Bool | ((i >= M || j >= N) => not b)} @-}
+
 -- | Build a /diagonal predicate/ — a closure that tests whether position
 -- @(i, j)@ in the edit graph has a diagonal edge (a /match point/ in Myers'
 -- terminology).
@@ -186,6 +199,7 @@ canDiag eq as bs lena lenb = \ i j ->
      arAs = listArray (0,lena - 1) as
      arBs = listArray (0,lenb - 1) bs
 
+{-@ ignore dstep @-}
 -- | Perform one breadth-first search expansion step, advancing every wave front
 -- 'DL' node by one 'DI' edit (one non-diagonal edge) and then following
 -- any available snake.
@@ -210,22 +224,28 @@ canDiag eq as bs lena lenb = \ i j ->
 -- with one more node than the input.
 {-@
 dstep
-  :: (Nat -> Nat -> Bool)
+  :: lena : Nat
+  -> lenb : Nat
+  -> DiagPred lena lenb
   -> d : Nat
   -> {nodes : WaveFront d | len nodes > 0}
   -> {v : WaveFront (d + 1) | len v = len nodes + 1}
 @-}
 dstep
-  :: (Int -> Int -> Bool) -- ^ Diagonal predicate
+  :: Int                  -- ^ First input's length phantom parameter for termination check.
+  -> Int                  -- ^ Second input's length phantom parameter for termination check.
+  -> (Int -> Int -> Bool) -- ^ Diagonal predicate
   -> Int                  -- ^ The current D-length; used for the static check of wave front invariant.
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D+1
--- NOTE: @_d@ is a phantom (apparently unused) parameter required by local LiquidHaskell specifications.
--- This parameter sits at the first equation as a workaround
--- to GHC removing it when desugaring multi-equation definitions.
--- See https://github.com/ucsd-progsys/liquidhaskell/issues/2704
-dstep _ _d [] = error "dstep: Cannot perform expansion on an empty list of nodes"
-dstep cd _ (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
+-- FIXME: @lena@, @lenb@ and @_d@ in the first equation are phantom (apparently unused)
+-- parameters required by local LiquidHaskell specifications.
+-- They sit at the first equation as a workaround to GHC removing them
+-- when desugaring multi-equation definitions.
+-- All could be replaced by underscores after fixing:
+-- https://github.com/ucsd-progsys/liquidhaskell/issues/2704
+dstep lena lenb _ _d [] = error "dstep: Cannot perform expansion on an empty list of nodes"
+dstep lena lenb cd _ (dl:dls) = addsnake lena lenb cd (hStep dl) : stepAndMerge dl dls
   where
     {-@ hStep :: x : DLN _d -> {v : DLN (_d + 1) | _kdiag v = _kdiag x + 1} @-}
     hStep node = node {poi = poi node + 1, path = F : path node}
@@ -239,11 +259,10 @@ dstep cd _ (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
                      -> {v : [DLN (_d+1)] | _wfDiags (_kdiag prev - 1) v && len v = len rest + 1}
                      / [len rest] @-}
     stepAndMerge :: DL -> [DL] -> [DL]
-    stepAndMerge prev [] = [addsnake cd $ vStep prev]
+    stepAndMerge prev [] = [addsnake lena lenb cd $ vStep prev]
     stepAndMerge prev (next:rest) =
-      addsnake cd (furthestReaching (vStep prev) (hStep next)) : stepAndMerge next rest
+      addsnake lena lenb cd (furthestReaching (vStep prev) (hStep next)) : stepAndMerge next rest
 
-{-@ lazy addsnake @-}
 -- | Follow a /snake/ from the current position of a 'DL' node.
 --
 -- A snake is a sequence of diagonal (cost-free) edges in the edit graph,
@@ -252,10 +271,22 @@ dstep cd _ (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
 -- @(poi dl, poj dl)@, this function advances both 'poi' and 'poj' as long
 -- as consecutive elements match, leaving 'path' unchanged (diagonal moves
 -- are not recorded as edit steps).
-{-@ addsnake :: (Nat -> Nat -> Bool) -> x : DL -> {v : DL | path v == path x && _kdiag v = _kdiag x} @-}
-addsnake :: (Int -> Int -> Bool) -> DL -> DL
-addsnake cd dl
-    | cd pi pj = addsnake cd $
+{-@
+addsnake :: lena : Nat
+         -> lenb : Nat
+         -> DiagPred lena lenb
+         -> dl : DL
+         -> {v : DL | path v == path dl
+                   && _kdiag v = _kdiag dl}
+         / [_manhattanDistance lena lenb (poi dl) (poj dl)]
+@-}
+addsnake :: Int                  -- ^ First input's length phantom parameter for termination check.
+         -> Int                  -- ^ Second input's length phantom parameter for termination check.
+         -> (Int -> Int -> Bool) -- ^ Diagonal predicate, a.k.a. 'canDiag'
+         -> DL
+         -> DL
+addsnake lena lenb cd dl
+    | cd pi pj = addsnake lena lenb cd $
                  dl {poi = pi + 1, poj = pj + 1, path = path dl}
     | otherwise   = dl
     where pi = poi dl; pj = poj dl
@@ -290,7 +321,7 @@ addsnake cd dl
 -- unchanged.
 ses :: (a -> b -> Bool) -> [a] -> [b] -> [DI]
 ses eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
-            concat . iterate (uncurry (dstep cd) . withD) . (:[]) . addsnake cd $
+            concat . iterate (uncurry (dstep lena lenb cd) . withD) . (:[]) . addsnake lena lenb cd $
             DL {poi=0,poj=0,path=[]}
             where cd = canDiag eq as bs lena lenb
                   lena = length as; lenb = length bs
