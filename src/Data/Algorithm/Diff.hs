@@ -238,6 +238,20 @@ _wfDistanceLowerBound :: Int -> Int -> Int -> [DL] -> ()
 _wfDistanceLowerBound _    _    _ []       = ()
 _wfDistanceLowerBound lena lenb k (_:dls) = _wfDistanceLowerBound lena lenb (k - 2) dls
 
+-- | The termination metric is non-negative: every in-bounds node has a
+-- non-negative manhattan distance to the goal, and the empty wave front
+-- yields the positive sentinel. Needed because the @Nat@ result refinement
+-- of the reflected '_wfDistanceToGoal' is not instantiated at logic-level
+-- applications, while termination metrics must be provably non-negative.
+{-@ _minDistanceNonNegative
+      :: lena : Nat -> lenb : Nat
+      -> xs : [{dl : DL | _withinBounds lena lenb dl}]
+      -> {_wfDistanceToGoal lena lenb xs >= 0}
+      / [len xs] @-}
+_minDistanceNonNegative :: Int -> Int -> [DL] -> ()
+_minDistanceNonNegative _    _    []       = ()
+_minDistanceNonNegative lena lenb (_:dls) = _minDistanceNonNegative lena lenb dls
+
 {-@ inline _reducesDistanceToGoal @-}
 {-@ _reducesDistanceToGoal :: lena : Nat -> lenb : Nat -> wf1:[{dl:DL | _withinBounds lena lenb dl}] -> wf2:[{dl:DL | _withinBounds lena lenb dl}] -> Bool @-}
 _reducesDistanceToGoal :: Int -> Int -> [DL] -> [DL] -> Bool
@@ -263,13 +277,26 @@ endPoint lena lenb dl = poi dl == lena && poj dl == lenb
 --
 -- The first two 'Int' parameters stand for the lengths of the input lists,
 -- which are captured from the outer scope to compute them only once.
-canDiag :: (a -> b -> Bool) -> [a] -> [b] -> Int -> Int -> Int -> Int -> Bool
-canDiag eq as bs lena lenb = \ i j ->
-   if i < lena && j < lenb then (arAs ! i) `eq` (arBs ! j) else False
-   where
-     -- Lists are converted into arrays to have O(1) lookups.
-     arAs = listArray (0,lena - 1) as
-     arBs = listArray (0,lenb - 1) bs
+{-@
+canDiag :: (a -> b -> Bool)
+        -> [a]
+        -> [b]
+        -> lena : Int
+        -> lenb : Int
+        -> DiagPred lena lenb
+@-}
+canDiag :: (a -> b -> Bool) -- ^ Custom equality predicate
+        -> [a] -- ^ First input
+        -> [b] -- ^ Second input
+        -> Int -- ^ First input's length
+        -> Int -- ^ Second input's lenth
+        -> (Int -> Int -> Bool) -- ^ Diagonal predicate on the edit grid
+canDiag eq as bs lena lenb = \i j ->
+  (i < lena && j < lenb) && ((arAs ! i) `eq` (arBs ! j))
+  where
+    -- Lists are converted into arrays to have O(1) lookups.
+    arAs = listArray (0,lena - 1) as
+    arBs = listArray (0,lenb - 1) bs
 
 -- | Perform one breadth-first search expansion step, advancing every wave front
 -- 'DL' node by one 'DI' edit (one non-diagonal edge) and then following
@@ -409,7 +436,6 @@ addsnake lena lenb cd dl
     | otherwise   = dl
     where pi = poi dl; pj = poj dl
 
-{-@ ignore ses @-}
 -- | Compute shortest edit script (SES), as the minimum sequence of 'DI' edit
 -- steps that transforms @as@ into @bs@, returned in reverse order.
 --
@@ -437,11 +463,24 @@ ses :: (a -> b -> Bool) -> [a] -> [b] -> [DI]
 ses eq as bs = search 0 [addsnake lena lenb cd (DL 0 0 [])]
             where cd = canDiag eq as bs lena lenb
                   lena = length as; lenb = length bs
+                  {-@ search :: d : Nat
+                             -> {dls : WaveFront lena lenb d | len dls > 0}
+                             -> {v : [DI] | len v >= d}
+                             / [_wfDistanceToGoal lena lenb dls] @-}
                   search :: Int -> [DL] -> [DI]
                   search _ [] = error "ses: The search must have a seed node"
                   search d wf = case findEndpoint lena lenb wf of
                       Just p  -> path p
-                      Nothing -> search (d + 1) (dstep lena lenb cd d wf)
+                      Nothing -> let wf' = dstep lena lenb cd d wf
+                                 in search (d + 1)
+                                           (wf' `withProof` _minDistanceNonNegative lena lenb wf')
+                  -- The abstract refinement @q@ lets 'find' carry the wave
+                  -- front element refinement (notably @len (path dl) == d@)
+                  -- over to the returned endpoint.
+                  {-@ assume findEndpoint :: forall <q :: DL -> Bool>.
+                                             i : Nat -> j : Nat -> xs : [DL<q>]
+                                          -> { m : Maybe {dl : DL<q> | endPoint i j dl}
+                                             | m == Nothing => _wfDistanceToGoal i j xs > 0} @-}
                   findEndpoint :: Int -> Int -> [DL] -> Maybe DL
                   findEndpoint i j = find (endPoint i j)
 
