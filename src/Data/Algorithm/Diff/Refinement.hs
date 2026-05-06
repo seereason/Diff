@@ -91,3 +91,10 @@ snd3 :: (a, b, c) -> b
 snd3 (_, y, _) = y
 thd3 :: (a, b, c) -> c
 thd3 (_, _, z) = z
+
+-- | Attach a proof term (typically a lemma application) to a value.
+-- The lemma's postcontition enters the verification context at the
+-- application site while the value is returned unchanged.
+{-@ withProof :: x:a -> b -> {v:a | v = x} @-}
+withProof :: a -> b -> a
+withProof x _ = x
