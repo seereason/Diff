@@ -305,6 +305,9 @@ getDiffBy eq a b = markup a b . reverse $ ses eq a b
           markup _ _ _ = []
 
 -- | Like 'getGroupedDiff' but accepts a custom equality predicate.
+--
+-- Postcondition: the output list is guaranteed to be /chunked/. i.e. no two adjacent
+-- elements share the same constructor.
 getGroupedDiffBy :: (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff [a] [b]]
 getGroupedDiffBy eq a b = go $ getDiffBy eq a b
     where go (First x  : xs) = let (fs, rest) = goFirsts  xs in First  (x:fs)     : go rest
