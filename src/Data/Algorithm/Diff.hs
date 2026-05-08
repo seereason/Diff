@@ -141,29 +141,24 @@ data DL = DL
                      --   'S' steps are stored.
     } deriving (Show, Eq)
 
--- | Ordering used by 'dstep' to select the /furthest-reaching/ D-path when
--- two candidates compete for the same k-diagonal.
+-- | Select the furthest-reaching candidate of two 'DL' nodes competing for the
+-- same k-diagonal, as required by the Myers algorithm.
 --
--- As in the Myers algorithm, it is enough to compare by 'poi': the candidate
--- that has advanced further along the \( x \)-axis is the furthest-reaching
--- endpoint on that diagonal.
+-- The candidate that has advanced further along the \( x \)-axis (larger 'poi')
+-- is the furthest-reaching endpoint on that diagonal.
 --
--- When 'poi' values are equal, the instance prefers the node with the
--- smaller 'poj' (equivalently, the higher k-diagonal). In practice this
--- branch is never decisive within 'dstep': competing candidates always
--- share a k-diagonal, so equal 'poi' implies equal 'poj'.
+-- Precondition: arguments @x@ and @y@ in @furthestReaching x y@ are in the
+-- same /k-diagonal/, meaning that
 --
--- TODO: This instance is /not/ a lawful 'Ord': it violates reflexivity
--- (@x '<=' x@ is 'False') because the equal-'poi' branch compares 'poj'
--- with a strict @'>'@. This is harmless in the current context, since the
--- only use of this instance is the 'max' call in 'dstep' — which always
--- returns one of its arguments — and when both candidates occupy the same
--- position, either choice is equivalent. This instance should either be
--- made lawful or removed in favour of a local 'max'-like helper.
-instance Ord DL
-        where x <= y = if poi x == poi y
-                then  poj x > poj y
-                else poi x <= poi y
+-- > poi x - poj x == poi y - poj y`
+-- 
+-- and both argument nodes are within the same wave front,
+-- 
+-- > length (path x) == length (path y)
+furthestReaching :: DL -> DL -> DL
+furthestReaching x y
+  | poi x >= poi y = x
+  | otherwise      = y
 
 -- | Build a /diagonal predicate/ — a closure that tests whether position
 -- @(i, j)@ in the edit graph has a diagonal edge (a /match point/ in Myers'
@@ -196,7 +191,7 @@ canDiag eq as bs lena lenb = \ i j ->
 --
 -- The resulting candidate list interleaves the 'F' and 'S' successors of each
 -- wave front node. The head ('F' successor of the first node) is kept as-is, and
--- 'pairMaxes' is applied to the tail — pairing each 'S' successor with the 'F'
+-- 'selectBestDLFromPairs' is applied to the tail — pairing each 'S' successor with the 'F'
 -- successor of the next wave front node. When this function is iterated from a
 -- single-node seed (as in 'ses'), each such pair always lies on the same
 -- diagonal: an 'F' edge advances to the next higher diagonal while an 'S' edge
@@ -206,7 +201,7 @@ dstep
   :: (Int -> Int -> Bool) -- ^ Diagonal predicate
   -> [DL]                 -- ^ Wave front of D-paths at edit distance D
   -> [DL]                 -- ^ Wave front of D-paths at edit distance D+1
-dstep cd dls = hd:pairMaxes rst
+dstep cd dls = hd:selectBestDLFromPairs rst
   where (hd:rst) = nextDLs dls
         -- Extend each node by one edit step in both possible directions
         -- and then follow any available snake from the resulting position.
@@ -215,10 +210,14 @@ dstep cd dls = hd:pairMaxes rst
           where dl'  = addsnake cd $ dl {poi=poi dl + 1, path=(F : pdl)}
                 dl'' = addsnake cd $ dl {poj=poj dl + 1, path=(S : pdl)}
                 pdl = path dl
-        -- Merge adjacent pairs of candidates to retain only the furthest-reaching.
-        pairMaxes [] = []
-        pairMaxes [x] = [x]
-        pairMaxes (x:y:rest) = max x y:pairMaxes rest
+        -- Select the furthest-reaching candidate from adjacent pairs of nodes. 
+        -- Note that candidate pairs are always on the same /k-diagonal/ by construction
+        -- at call site (in 'ses' where it iterates starting from a single node
+        -- wave front), meaning that each compared pair @x@ and @y@ are such that:
+        -- @(poi x - poj x) = (poi y - poj y)@
+        selectBestDLFromPairs [] = []
+        selectBestDLFromPairs [x] = [x]
+        selectBestDLFromPairs (x:y:rest) = furthestReaching x y:selectBestDLFromPairs rest
 
 -- | Follow a /snake/ from the current position of a 'DL' node.
 --
@@ -263,7 +262,7 @@ addsnake cd dl
 -- and space complexity — \( O(ND) \) and \( O(D^2) \) respectively — is
 -- unchanged. Unlike the paper, which selects the better candidate per
 -- diagonal before extending its snake, 'dstep' extends snakes on /both/
--- candidates before 'pairMaxes' selects the winner, discarding the other
+-- candidates before 'selectBestDLFromPairs' selects the winner, discarding the other
 -- extension. This does not affect the time bound: on any given diagonal,
 -- all snake intervals — retained and discarded — are non-overlapping across
 -- successive values of \( D \), because each new candidate starts at or
