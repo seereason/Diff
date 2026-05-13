@@ -195,10 +195,13 @@ canDiag eq as bs lena lenb = \ i j ->
 -- each such pair always lies on the same diagonal: an 'F' edge advances to the
 -- next higher diagonal while an 'S' edge retreats to the next lower one, so the
 -- two members of each pair straddle the same diagonal from opposite sides.
+--
+-- Precondition: The node list must be non-empty.
 dstep
   :: (Int -> Int -> Bool) -- ^ Diagonal predicate
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D+1
+dstep _ [] = error "dstep: Cannot perform expansion on an empty list of nodes"
 dstep cd (dl:dls) = hStep dl : stepAndMerge dl dls
   where
     hStep node = addsnake cd $ node {poi = poi node + 1, path = F : path node}
