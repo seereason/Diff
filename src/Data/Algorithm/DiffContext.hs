@@ -18,7 +18,6 @@ module Data.Algorithm.DiffContext
     , getContextDiffNumbered
     , Numbered(Numbered), numbered, unnumber
     , unNumberContextDiff
-    , groupBy'
     ) where
 
 import Data.Algorithm.Diff (PolyDiff(..), Diff, getGroupedDiff)
@@ -35,30 +34,14 @@ type ContextDiff c = [Hunk c]
 -- on 'Diff' constructors.
 type Hunk c = [Diff [c]]
 
-
--- | Groups elements so that consecutive elements in a group satisfy the predicate.
--- This is unlike 'Data.List.groupBy' where grouped elements are only guaranteed to
--- satisfy the predicate w.r.t. the first element of the group.
---
--- For instance, to split the input where there are two consecutive `1`s:
---
---     > let notBoth1 a b = not (a == 1 && b == 1) in
---     >
---     > groupBy' notBoth1 [1,1,2,3,1,1,4,5,6,1]
---     > [[1],[1,2,3,1],[1,4,5,6,1]]
---     >
---     > groupBy notBoth1 [1,1,2,3,1,1,4,5,6,1]
---     > [[1],[1,2,3],[1],[1,4,5,6],[1]]
---
--- In the first result the list is split anywhere there are two
--- adjacent ones, as desired.
-groupBy' :: (a -> a -> Bool) -> [a] -> [[a]]
-groupBy' _ [] = []
-groupBy' eq (x0 : xs0) = go [x0] xs0
-    where
-      go (x : xs) (y : zs) | eq x y = go (y : x : xs) zs
-      go g (y : zs) = reverse g : go [y] zs
-      go g [] = [reverse g]
+-- | Split a 'Diff' list at consecutive 'Both'-'Both' boundaries.
+splitBothBoth :: [Diff [c]] -> [Hunk c]
+splitBothBoth = go []
+  where
+    go :: Hunk c -> [Diff [c]] -> [Hunk c]
+    go g (x@Both{} : y@Both{} : xs) = reverse (x:g) : go [] (y:xs)
+    go g (x : xs) = go (x:g) xs
+    go g [] = [reverse g]
 
 data Numbered a = Numbered Int a deriving Show
 instance Eq a => Eq (Numbered a) where
@@ -122,10 +105,8 @@ getContextDiffNumbered contextSize a0 b0 =
     -- text in the middle. Note that a non-trivial partition can only happen after
     -- the matching text has been reduced to become consecutive 'Both' values
     -- corresponding to a hunk's suffix and the following hunk prefix.
-    groupBy' (\a b -> not (isBoth a && isBoth b)) $ doPrefix $ getGroupedDiff a0 b0
+    splitBothBoth $ doPrefix $ getGroupedDiff a0 b0
     where
-      isBoth (Both _ _) = True
-      isBoth _ = False
       -- | Handle the common text leading up to a diff.
       --
       -- Postcondition: The @a@ elements in @doPrefix h@ are a subset of those in @h@,
