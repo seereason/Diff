@@ -57,9 +57,6 @@
 -- differs from the paper, where it denotes the sequence of k-diagonals visited
 -- by the SES path; that structure is not materialised in this implementation.
 -----------------------------------------------------------------------------
-
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
-
 module Data.Algorithm.Diff
     ( Diff, PolyDiff(..)
     -- * Comparing lists for differences
