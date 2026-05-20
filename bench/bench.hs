@@ -1,13 +1,20 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
+-- {-# OPTIONS_GHC -Wno-orphans #-}
+
 module Main where
 
 import Criterion.Main
 import Control.DeepSeq
+import GHC.Generics
 import System.Random
 
 import Data.Algorithm.Diff
 
-instance NFData (Diff a) where
-    
+deriving instance Generic (Diff a)
+
+instance NFData a => NFData (Diff a)
 
 main :: IO ()
 main = doBenchMarks 37

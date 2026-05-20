@@ -57,9 +57,6 @@
 -- differs from the paper, where it denotes the sequence of k-diagonals visited
 -- by the SES path; that structure is not materialised in this implementation.
 -----------------------------------------------------------------------------
-
-{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
-
 module Data.Algorithm.Diff
     ( Diff, PolyDiff(..)
     -- * Comparing lists for differences
@@ -189,35 +186,29 @@ canDiag eq as bs lena lenb = \ i j ->
 -- 'addsnake' is applied to each candidate immediately to extend it along any
 -- available sequence of matching elements.
 --
--- The resulting candidate list interleaves the 'F' and 'S' successors of each
--- wave front node. The head ('F' successor of the first node) is kept as-is, and
--- 'selectBestDLFromPairs' is applied to the tail — pairing each 'S' successor with the 'F'
--- successor of the next wave front node. When this function is iterated from a
--- single-node seed (as in 'ses'), each such pair always lies on the same
--- diagonal: an 'F' edge advances to the next higher diagonal while an 'S' edge
--- retreats to the next lower one, so the two members of each pair straddle the
--- same diagonal from opposite sides.
+-- The resulting candidates are merged pairwise: the vertical successor of each
+-- node is paired with the horizontal successor of the next node in the wave
+-- front. When this function is iterated from a single-node seed (as in 'ses'),
+-- each such pair always lies on the same diagonal: an 'F' edge advances to the
+-- next higher diagonal while an 'S' edge retreats to the next lower one, so the
+-- two members of each pair straddle the same diagonal from opposite sides.
+--
+-- Precondition: The node list must be non-empty.
 dstep
   :: (Int -> Int -> Bool) -- ^ Diagonal predicate
-  -> [DL]                 -- ^ Wave front of D-paths at edit distance D
-  -> [DL]                 -- ^ Wave front of D-paths at edit distance D+1
-dstep cd dls = hd:selectBestDLFromPairs rst
-  where (hd:rst) = nextDLs dls
-        -- Extend each node by one edit step in both possible directions
-        -- and then follow any available snake from the resulting position.
-        nextDLs [] = []
-        nextDLs (dl:rest) = dl':dl'':nextDLs rest
-          where dl'  = addsnake cd $ dl {poi=poi dl + 1, path=(F : pdl)}
-                dl'' = addsnake cd $ dl {poj=poj dl + 1, path=(S : pdl)}
-                pdl = path dl
-        -- Select the furthest-reaching candidate from adjacent pairs of nodes. 
-        -- Note that candidate pairs are always on the same /k-diagonal/ by construction
-        -- at call site (in 'ses' where it iterates starting from a single node
-        -- wave front), meaning that each compared pair @x@ and @y@ are such that:
-        -- @(poi x - poj x) = (poi y - poj y)@
-        selectBestDLFromPairs [] = []
-        selectBestDLFromPairs [x] = [x]
-        selectBestDLFromPairs (x:y:rest) = furthestReaching x y:selectBestDLFromPairs rest
+  -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
+  -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D+1
+dstep _ [] = error "dstep: Cannot perform expansion on an empty list of nodes"
+dstep cd (dl:dls) = hStep dl : stepAndMerge dl dls
+  where
+    hStep node = addsnake cd $ node {poi = poi node + 1, path = F : path node}
+    vStep node = addsnake cd $ node {poj = poj node + 1, path = S : path node}
+    -- Merge vertical step of previous node with horizontal step of next node,
+    -- selecting the furthest-reaching candidate for each shared k-diagonal.
+    stepAndMerge :: DL -> [DL] -> [DL]
+    stepAndMerge prev [] = [vStep prev]
+    stepAndMerge prev (next:rest) =
+      furthestReaching (vStep prev) (hStep next) : stepAndMerge next rest
 
 -- | Follow a /snake/ from the current position of a 'DL' node.
 --
