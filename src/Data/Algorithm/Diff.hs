@@ -148,9 +148,9 @@ data DL = DL
 -- same /k-diagonal/, meaning that
 --
 -- > poi x - poj x == poi y - poj y`
--- 
+--
 -- and both argument nodes are within the same wave front,
--- 
+--
 -- > length (path x) == length (path y)
 furthestReaching :: DL -> DL -> DL
 furthestReaching x y
@@ -287,6 +287,8 @@ getGroupedDiff = getGroupedDiffBy (==)
 -- | A form of 'getDiff' with no 'Eq' constraint. Instead, an equality predicate
 -- is taken as the first argument.
 getDiffBy :: (a -> b -> Bool) -> [a] -> [b] -> [PolyDiff a b]
+getDiffBy _ a [] = map First a
+getDiffBy _ [] b = map Second b
 getDiffBy eq a b = markup a b . reverse $ ses eq a b
     where markup (x:xs) (y:ys) ds
             | eq x y = Both x y : markup xs ys ds
