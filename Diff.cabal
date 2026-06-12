@@ -13,6 +13,7 @@ license-file:        LICENSE
 author:              Sterling Clover
 maintainer:          David Fox <dsf@seereason.com>
 Build-Type:          Simple
+extra-doc-files:     README.md
 
 tested-with:
   GHC == 9.14.1
