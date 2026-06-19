@@ -38,6 +38,7 @@ type Hunk c = [Diff [c]]
 splitBothBoth :: [Diff [c]] -> [Hunk c]
 splitBothBoth = go []
   where
+    {-@ go :: Hunk c -> xs : [Diff [c]] -> [Hunk c] / [len xs] @-}
     go :: Hunk c -> [Diff [c]] -> [Hunk c]
     go g (x@Both{} : y@Both{} : xs) = reverse (x:g) : go [] (y:xs)
     go g (x : xs) = go (x:g) xs
@@ -118,7 +119,8 @@ getContextDiffNumbered (Just contextSize) a0 b0 =
       -- be split into two other 'Both' diffs. This happens when their contents
       -- are too large compared with the contex size, resulting in some @a@
       -- elements being dropped.
-      doPrefix :: Hunk a -> Hunk a
+      {-@ doPrefix :: h : Hunk c -> [Diff [c]] / [len h, 0]@-}
+      doPrefix :: Hunk c -> [Diff [c]]
       doPrefix [] = []
       -- Trailing common elements are no prefix.
       -- This case corresponds to when both input lists are identical, so the
@@ -129,12 +131,14 @@ getContextDiffNumbered (Just contextSize) a0 b0 =
         Both (drop (length xs - contextSize) xs)
              (drop (length ys - contextSize) ys) : doSuffix more
       -- Prefix finished, do the diff then the following suffix.
-      doPrefix (d : ds) = doSuffix (d : ds)
+      doPrefix (d : ds) = d : doSuffix ds
+
       -- | Handle the common text following a diff.
       --
       -- Precondition: The input does not start with a 'Both' diff. Otherwise,
       -- it behaves like @doPrefix@.
-      doSuffix :: Hunk a -> Hunk a
+      {-@ doSuffix :: h : Hunk c -> [Diff [c]] / [len h, 1] @-}
+      doSuffix :: Hunk c -> [Diff [c]]
       doSuffix [] = []
       -- A trailing suffix.
       doSuffix [Both xs ys] = [Both (take contextSize xs) (take contextSize ys)]
