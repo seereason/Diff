@@ -183,12 +183,11 @@ canDiag eq as bs lena lenb = \ i j ->
 -- * An 'F' (delete) move: 'poi' incremented by 1.
 -- * An 'S' (insert) move: 'poj' incremented by 1.
 --
--- 'addsnake' is applied to each candidate immediately to extend it along any
--- available sequence of matching elements.
---
 -- The resulting candidates are merged pairwise: the vertical successor of each
 -- node is paired with the horizontal successor of the next node in the wave
--- front. When this function is iterated from a single-node seed (as in 'ses'),
+-- front. The 'furthestReaching' between them is extended along the available
+-- sequence of matching elements using 'addsnake'.
+-- When this function is iterated from a single-node seed (as in 'ses'),
 -- each such pair always lies on the same diagonal: an 'F' edge advances to the
 -- next higher diagonal while an 'S' edge retreats to the next lower one, so the
 -- two members of each pair straddle the same diagonal from opposite sides.
@@ -199,16 +198,17 @@ dstep
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D+1
 dstep _ [] = error "dstep: Cannot perform expansion on an empty list of nodes"
-dstep cd (dl:dls) = hStep dl : stepAndMerge dl dls
+dstep cd (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
   where
-    hStep node = addsnake cd $ node {poi = poi node + 1, path = F : path node}
-    vStep node = addsnake cd $ node {poj = poj node + 1, path = S : path node}
+    hStep node = node {poi = poi node + 1, path = F : path node}
+    vStep node = node {poj = poj node + 1, path = S : path node}
     -- Merge vertical step of previous node with horizontal step of next node,
-    -- selecting the furthest-reaching candidate for each shared k-diagonal.
+    -- selecting the furthest-reaching candidate for each shared k-diagonal,
+    -- and extend it along matching elements.
     stepAndMerge :: DL -> [DL] -> [DL]
-    stepAndMerge prev [] = [vStep prev]
+    stepAndMerge prev [] = [addsnake cd $ vStep prev]
     stepAndMerge prev (next:rest) =
-      furthestReaching (vStep prev) (hStep next) : stepAndMerge next rest
+      addsnake cd (furthestReaching (vStep prev) (hStep next)) : stepAndMerge next rest
 
 -- | Follow a /snake/ from the current position of a 'DL' node.
 --
