@@ -26,6 +26,9 @@ library
       base          >= 4.22.0.0 && < 5
     , array
     , pretty        >= 1.1
+      -- LH version scheme: 0.<GHC_VERSION>.<LH_REVISION>
+      -- Update the corresponding versions in .github/workflows/liquidhaskell.yml
+      -- after upgrading GHC and LH to keep CI in sync.
     , liquidhaskell ^>= 0.9.14.1.1
   -- Recompilation check is disabled to make sure changes to specification
   -- annotations are checked by the LH plugin (otherwise they are silently ignored
