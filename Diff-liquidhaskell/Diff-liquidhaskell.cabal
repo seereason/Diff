@@ -1,0 +1,37 @@
+cabal-version: 2.4
+name:          Diff-liquidhaskell
+version:       0.1.0.0
+synopsis:      Liquid Haskell static checks for the Diff package
+description:
+  Provides a test suite whose build executes Diff's Liquid Haskell refinement type
+  annotation checks.
+  Exists as a separate package to break the cyclic dependency:
+  Diff -> liquidhaskell -> liquidhaskell-boot -> Diff.
+license:       BSD-3-Clause
+build-type:    Simple
+
+tested-with:   GHC == 9.14.1
+
+library
+  default-language: Haskell2010
+  -- Re-use the main Diff source tree so Liquid Haskell checks the real code.
+  hs-source-dirs:   ../src
+  -- No modules are exposed because this package is intended
+  -- for checking the build only.
+  other-modules:
+    Data.Algorithm.Diff
+    Data.Algorithm.DiffOutput
+    Data.Algorithm.DiffContext
+  build-depends:
+      base          >= 4.22.0.0 && < 5
+    , array
+    , pretty        >= 1.1
+      -- LH version scheme: 0.<GHC_VERSION>.<LH_REVISION>
+      -- Update the corresponding versions in .github/workflows/liquidhaskell.yml
+      -- after upgrading GHC and LH to keep CI in sync.
+    , liquidhaskell ^>= 0.9.14.1.1
+  -- Recompilation check is disabled to make sure changes to specification
+  -- annotations are checked by the LH plugin (otherwise they are silently ignored
+  -- if no source change is introduced).
+  -- All warnings are disabled to focus on LH output.
+  ghc-options: -fplugin=LiquidHaskell -O0 -fforce-recomp -w

@@ -125,6 +125,13 @@ type Diff a = PolyDiff a a
 -- Each wave front consists of one 'DL' per /k-diagonal/.  A 'DL' stores the
 -- endpoint coordinates and the edit trace of a \( D \)-path, i.e. a path from the
 -- origin \( (0,0) \) that uses exactly \( D \) non-diagonal edges.
+{-@
+data DL = DL
+    { poi  :: Nat
+    , poj  :: Nat
+    , path :: { p : [DI] | len p <= poi + poj }
+    }
+@-}
 data DL = DL
     { poi  :: !Int   -- ^ /Position On I/ — the @x@-coordinate of the endpoint
                      --   in the edit graph, i.e. the number of elements
@@ -193,6 +200,12 @@ canDiag eq as bs lena lenb = \ i j ->
 -- two members of each pair straddle the same diagonal from opposite sides.
 --
 -- Precondition: The node list must be non-empty.
+{-@
+dstep
+  :: (Nat -> Nat -> Bool)
+  -> {nodes : [DL] | len nodes > 0}
+  -> {v : [DL] | len v = len nodes + 1}
+@-}
 dstep
   :: (Int -> Int -> Bool) -- ^ Diagonal predicate
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
@@ -210,6 +223,7 @@ dstep cd (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
     stepAndMerge prev (next:rest) =
       addsnake cd (furthestReaching (vStep prev) (hStep next)) : stepAndMerge next rest
 
+{-@ lazy addsnake @-}
 -- | Follow a /snake/ from the current position of a 'DL' node.
 --
 -- A snake is a sequence of diagonal (cost-free) edges in the edit graph,
@@ -218,6 +232,7 @@ dstep cd (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
 -- @(poi dl, poj dl)@, this function advances both 'poi' and 'poj' as long
 -- as consecutive elements match, leaving 'path' unchanged (diagonal moves
 -- are not recorded as edit steps).
+{-@ addsnake :: (Nat -> Nat -> Bool) -> x : DL -> {v : DL | path v == path x } @-}
 addsnake :: (Int -> Int -> Bool) -> DL -> DL
 addsnake cd dl
     | cd pi pj = addsnake cd $
@@ -225,6 +240,7 @@ addsnake cd dl
     | otherwise   = dl
     where pi = poi dl; pj = poj dl
 
+{-@ ignore ses @-}
 -- | Compute shortest edit script (SES), as the minimum sequence of 'DI' edit
 -- steps that transforms @as@ into @bs@, returned in reverse order.
 --
