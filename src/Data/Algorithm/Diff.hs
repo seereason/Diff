@@ -226,7 +226,10 @@ canDiag eq as bs lena lenb = \ i j ->
 -- next higher diagonal while an 'S' edge retreats to the next lower one, so the
 -- two members of each pair straddle the same diagonal from opposite sides.
 --
--- Precondition: The node list must be non-empty.
+-- Precondition: The node list must be a non-empty @WaveFront@.
+--
+-- Postcondition: The node list must be a non-empty @WaveFront@
+-- with one more node than the input.
 {-@
 dstep
   :: (Nat -> Nat -> Bool)
@@ -239,6 +242,10 @@ dstep
   -> Int                  -- ^ The current D-length; used for the static check of wave front invariant.
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D+1
+-- NOTE: @_d@ is a phantom (apparently unused) parameter required by local LiquidHaskell specifications.
+-- This parameter sits at the first equation as a workaround
+-- to GHC removing it when desugaring multi-equation definitions.
+-- See https://github.com/ucsd-progsys/liquidhaskell/issues/2704
 dstep _ _d [] = error "dstep: Cannot perform expansion on an empty list of nodes"
 dstep cd _ (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
   where
