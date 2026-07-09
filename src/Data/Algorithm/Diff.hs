@@ -267,14 +267,7 @@ addsnake cd dl
 -- existing spine), rather than the paper's single-integer-per-diagonal
 -- representation. The asymptotic time
 -- and space complexity — \( O(ND) \) and \( O(D^2) \) respectively — is
--- unchanged. Unlike the paper, which selects the better candidate per
--- diagonal before extending its snake, 'dstep' extends snakes on /both/
--- candidates before 'selectBestDLFromPairs' selects the winner, discarding the other
--- extension. This does not affect the time bound: on any given diagonal,
--- all snake intervals — retained and discarded — are non-overlapping across
--- successive values of \( D \), because each new candidate starts at or
--- beyond the previous winner's endpoint. The total number of element
--- comparisons across all snake extensions is therefore \( O(ND) \).
+-- unchanged.
 ses :: (a -> b -> Bool) -> [a] -> [b] -> [DI]
 ses eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
             concat . iterate (dstep cd) . (:[]) . addsnake cd $
