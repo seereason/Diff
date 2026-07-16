@@ -1,3 +1,4 @@
+{-@ LIQUID "--ple" @-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Algorithm.Diff
@@ -145,6 +146,29 @@ data DL = DL
                      --   'S' steps are stored.
     } deriving (Show, Eq)
 
+-- This refinement type alias represents a 'DL' value with a fixed /D-length/,
+-- which we call a "D-path location node".
+{-@ type DLN D = { x : DL | len (path x) = D } @-}
+
+{-@ inline _kdiag @-}
+-- | Computes the k-diagonal of a node.
+-- Used in LiquidHaskell logic as an expression.
+_kdiag :: DL -> Int
+_kdiag dl = poi dl - poj dl
+
+{-@ reflect _wfDiags @-}
+{-@ _wfDiags :: Int -> xs : [DL] -> Bool / [len xs] @-}
+-- | Checks if succesive nodes of a wave front lie within k-diagonals
+-- differing by 2 as described in the Myers algorithm.
+-- Used in LiquidHaskell logic as a predicate.
+_wfDiags :: Int -> [DL] -> Bool
+_wfDiags _ [] = True
+_wfDiags k (dl:dls) = poi dl - poj dl == k && _wfDiags (k - 2) dls
+
+-- A wave front is a list of 'DL' nodes, all at the same edit distance @D@,
+-- with k-diagonals @D@, @D−2@, …, @-D+2@, @-D@.
+{-@ type WaveFront D = {xs : [DLN D] | _wfDiags D xs} @-}
+
 -- | Select the furthest-reaching candidate of two 'DL' nodes competing for the
 -- same k-diagonal, as required by the Myers algorithm.
 --
@@ -159,6 +183,9 @@ data DL = DL
 -- and both argument nodes are within the same wave front,
 --
 -- > length (path x) == length (path y)
+{-@ furthestReaching ::  x : DL
+                     -> {y : DL | _kdiag x = _kdiag y}
+                     -> {v : DL | v = x || v = y} @-}
 furthestReaching :: DL -> DL -> DL
 furthestReaching x y
   | poi x >= poi y = x
@@ -199,25 +226,40 @@ canDiag eq as bs lena lenb = \ i j ->
 -- next higher diagonal while an 'S' edge retreats to the next lower one, so the
 -- two members of each pair straddle the same diagonal from opposite sides.
 --
--- Precondition: The node list must be non-empty.
+-- Precondition: The node list must be a non-empty @WaveFront@.
+--
+-- Postcondition: The node list must be a non-empty @WaveFront@
+-- with one more node than the input.
 {-@
 dstep
   :: (Nat -> Nat -> Bool)
-  -> {nodes : [DL] | len nodes > 0}
-  -> {v : [DL] | len v = len nodes + 1}
+  -> d : Nat
+  -> {nodes : WaveFront d | len nodes > 0}
+  -> {v : WaveFront (d + 1) | len v = len nodes + 1}
 @-}
 dstep
   :: (Int -> Int -> Bool) -- ^ Diagonal predicate
+  -> Int                  -- ^ The current D-length; used for the static check of wave front invariant.
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D+1
-dstep _ [] = error "dstep: Cannot perform expansion on an empty list of nodes"
-dstep cd (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
+-- NOTE: @_d@ is a phantom (apparently unused) parameter required by local LiquidHaskell specifications.
+-- This parameter sits at the first equation as a workaround
+-- to GHC removing it when desugaring multi-equation definitions.
+-- See https://github.com/ucsd-progsys/liquidhaskell/issues/2704
+dstep _ _d [] = error "dstep: Cannot perform expansion on an empty list of nodes"
+dstep cd _ (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
   where
+    {-@ hStep :: x : DLN _d -> {v : DLN (_d + 1) | _kdiag v = _kdiag x + 1} @-}
     hStep node = node {poi = poi node + 1, path = F : path node}
+    {-@ vStep :: x : DLN _d -> {v : DLN (_d + 1) | _kdiag v = _kdiag x - 1} @-}
     vStep node = node {poj = poj node + 1, path = S : path node}
     -- Merge vertical step of previous node with horizontal step of next node,
     -- selecting the furthest-reaching candidate for each shared k-diagonal,
     -- and extend it along matching elements.
+     {-@ stepAndMerge :: prev : DLN _d
+                     -> {rest : [DLN _d] | _wfDiags (_kdiag prev - 2) rest}
+                     -> {v : [DLN (_d+1)] | _wfDiags (_kdiag prev - 1) v && len v = len rest + 1}
+                     / [len rest] @-}
     stepAndMerge :: DL -> [DL] -> [DL]
     stepAndMerge prev [] = [addsnake cd $ vStep prev]
     stepAndMerge prev (next:rest) =
@@ -232,7 +274,7 @@ dstep cd (dl:dls) = addsnake cd (hStep dl) : stepAndMerge dl dls
 -- @(poi dl, poj dl)@, this function advances both 'poi' and 'poj' as long
 -- as consecutive elements match, leaving 'path' unchanged (diagonal moves
 -- are not recorded as edit steps).
-{-@ addsnake :: (Nat -> Nat -> Bool) -> x : DL -> {v : DL | path v == path x } @-}
+{-@ addsnake :: (Nat -> Nat -> Bool) -> x : DL -> {v : DL | path v == path x && _kdiag v = _kdiag x} @-}
 addsnake :: (Int -> Int -> Bool) -> DL -> DL
 addsnake cd dl
     | cd pi pj = addsnake cd $
@@ -270,10 +312,11 @@ addsnake cd dl
 -- unchanged.
 ses :: (a -> b -> Bool) -> [a] -> [b] -> [DI]
 ses eq as bs = path . head . dropWhile (\dl -> poi dl /= lena || poj dl /= lenb) .
-            concat . iterate (dstep cd) . (:[]) . addsnake cd $
+            concat . iterate (uncurry (dstep cd) . withD) . (:[]) . addsnake cd $
             DL {poi=0,poj=0,path=[]}
             where cd = canDiag eq as bs lena lenb
                   lena = length as; lenb = length bs
+                  withD xs = (length . path . head $ xs, xs)
 
 -- | Takes two lists and returns a list of differences between them. This is
 -- 'getDiffBy' with '==' used as predicate.
