@@ -7,7 +7,7 @@ on:
 
 jobs:
   liquidhaskell:
-    name: Build / Run Checks
+    name: LiquidHaskell Static Checks
     runs-on: ubuntu-latest
     strategy:
       matrix:
