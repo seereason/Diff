@@ -66,24 +66,18 @@ diffToLineRanges = toLineRange 1 1
                 let lins=length ls
                 in  toLineRange (leftLine+lins) (rightLine+lins) rs
           -- A 'Change' is introduced when an addition is followed by a deletion, or vice versa.
-          toLineRange leftLine rightLine (Second lsS@(_:_) : First lsF@(_:_) : rs) =
+          toLineRange leftLine rightLine (Second lsS : First lsF : rs) =
                 toChange leftLine rightLine lsF lsS rs
-          toLineRange leftLine rightLine (First lsF@(_:_) : Second lsS@(_:_) : rs) =
+          toLineRange leftLine rightLine (First lsF : Second lsS : rs) =
                 toChange leftLine rightLine lsF lsS rs
           -- Introduce 'Addition's.
-          toLineRange leftLine rightLine (Second lsS@(_:_) : rs) =
+          toLineRange leftLine rightLine (Second lsS : rs) =
                 let diff = Addition (mkLineRange rightLine lsS) (leftLine-1)
                 in  diff : toLineRange leftLine (rightLine + length lsS) rs
           -- Introduce 'Deletion's.
-          toLineRange leftLine rightLine (First lsF@(_:_) : rs)=
+          toLineRange leftLine rightLine (First lsF : rs)=
                 let diff = Deletion (mkLineRange leftLine lsF) (rightLine-1)
                 in  diff : toLineRange (leftLine + length lsF) rightLine rs
-          -- Skip empty 'Second' and 'First' entries.
-          -- NOTE: Both these cases are unreachable.
-          toLineRange leftLine rightLine (Second [] : rs) =
-                toLineRange leftLine rightLine rs
-          toLineRange leftLine rightLine (First [] : rs) =
-                toLineRange leftLine rightLine rs
           -- | Build 'Change's from adjacent additions and deletions.
           {-@ toChange :: {l : Int | l >= 1}
                        -> {r : Int | r >= 1}
