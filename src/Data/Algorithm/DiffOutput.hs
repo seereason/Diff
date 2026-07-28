@@ -33,20 +33,18 @@ diffToLineRanges = toLineRange 1 1
                 let lins=length ls
                 in  toLineRange (leftLine+lins) (rightLine+lins) rs
           -- A 'Change' is introduced when an addition is followed by a deletion, or vice versa.
-          toLineRange leftLine rightLine (Second lsS:First lsF:rs)=
+          toLineRange leftLine rightLine (Second lsS : First lsF : rs) =
                 toChange leftLine rightLine lsF lsS rs
-          toLineRange leftLine rightLine (First lsF:Second lsS:rs)=
+          toLineRange leftLine rightLine (First lsF : Second lsS : rs) =
                 toChange leftLine rightLine lsF lsS rs
           -- Introduce 'Addition's.
-          toLineRange leftLine rightLine (Second lsS:rs)=
-                let linesS=length lsS
-                    diff=Addition (LineRange (rightLine,rightLine+linesS-1) lsS) (leftLine-1)
-                in  diff : toLineRange leftLine (rightLine+linesS) rs
+          toLineRange leftLine rightLine (Second lsS : rs) =
+                let diff = Addition (mkLineRange rightLine lsS) (leftLine-1)
+                in  diff : toLineRange leftLine (rightLine + length lsS) rs
           -- Introduce 'Deletion's.
-          toLineRange leftLine rightLine  (First lsF:rs)=
-                let linesF=length lsF
-                    diff=Deletion (LineRange (leftLine,leftLine+linesF-1) lsF) (rightLine-1)
-                in  diff: toLineRange(leftLine+linesF) rightLine rs
+          toLineRange leftLine rightLine (First lsF : rs)=
+                let diff = Deletion (mkLineRange leftLine lsF) (rightLine-1)
+                in  diff : toLineRange (leftLine + length lsF) rightLine rs
           -- | Build 'Change's from adjacent additions and deletions.
           {-@ toChange :: Int -> Int -> [String] -> [String] -> diffs : [Diff [String]] -> [DiffOperation LineRange] / [len diffs, 1] @-}
           toChange :: Int -- ^ Current left line number.
@@ -56,10 +54,8 @@ diffToLineRanges = toLineRange 1 1
                    -> [Diff [String]] -- ^ Remaining 'Diff's.
                    -> [DiffOperation LineRange]
           toChange leftLine rightLine lsF lsS rs=
-                let linesS=length lsS
-                    linesF=length lsF
-                in  Change (LineRange (leftLine,leftLine+linesF-1) lsF) (LineRange (rightLine,rightLine+linesS-1) lsS)
-                        : toLineRange (leftLine+linesF) (rightLine+linesS) rs
+                Change (mkLineRange leftLine lsF) (mkLineRange rightLine lsS)
+                    : toLineRange (leftLine + length lsF) (rightLine + length lsS) rs
 
 -- | Pretty print the differences. The output is similar to the output of the @diff@ utility.
 --
@@ -184,6 +180,12 @@ data LineRange = LineRange { lrNumbers :: (LineNo, LineNo)
                            , lrContents :: [String]
                            }
             deriving (Show, Read, Eq, Ord)
+
+-- | Smart constructor for 'LineRange' that computes the end line from the
+-- start line and the content length, guaranteeing that its content length and
+-- range match.
+mkLineRange :: Int -> [String] -> LineRange
+mkLineRange start contents = LineRange (start, start + length contents - 1) contents
 
 -- | Diff operation representing changes to apply.
 data DiffOperation a
