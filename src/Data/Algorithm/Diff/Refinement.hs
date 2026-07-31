@@ -68,7 +68,16 @@ noFFSS (First _ : xs) = not (headIsFirst xs) && noFFSS xs
 noFFSS (Second _ : xs) = not (headIsSecond xs) && noFFSS xs
 noFFSS (Both _ _ : xs) = noFFSS xs
 
--- * Lifted utility functions
+-- 'Diff' type for the precondition of 'diffToLineRanges'.
+{-@ type LineDiff = Diff (NonEmpty String) @-}
+
+-- * Lifted utility functions and specification helpers
+
+-- Non-empty lists as refinements of regular lists.
+{-@ type NonEmpty a = {xs : [a] | len xs >0}@-}
+
+-- Indices for line numbers.
+{-@ type Nat1 = {n : Int | n >= 1 } @-}
 
 -- | Measures for triplet projections.
 {-@
