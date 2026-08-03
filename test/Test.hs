@@ -164,7 +164,8 @@ prop_ppDiffR (DiffInput le ri) =
     let haskDiff=ppDiff $ getGroupedDiff le ri
         utilDiff= unsafePerformIO (runDiff (unlines le) (unlines ri))
     in  cover 90 (haskDiff == utilDiff) "exact match" $
-                classify (haskDiff == utilDiff) "exact match"
+                classify (haskDiff == utilDiff) "exact match" $
+                    not (null utilDiff) ==>
                         (div ((length (lines haskDiff))*100) (length (lines utilDiff)) < 110) -- less than 10% bigger
     where
       runDiff left right =
