@@ -366,9 +366,9 @@ dstep lena lenb cd _ (dl:dls) =
     -- selecting the furthest-reaching candidate for each shared k-diagonal,
     -- and extend it along matching elements.
     {-@ stepAndMerge
-          :: prev: DLN lena lenb _d
-          -> rest : {xs : [DLN lena lenb _d] | _wfDiags (_kdiag prev - 2) xs
-                                            && _wfDistanceToGoal lena lenb xs > 0}
+          :: prev : DLN lena lenb _d
+          -> nodes : {xs : [DLN lena lenb _d] | _wfDiags (_kdiag prev - 2) xs
+                                             && _wfDistanceToGoal lena lenb xs > 0}
           -> {v : [DLN lena lenb (_d + 1)] | _wfDiags (_kdiag prev - 1) v
                                           && (poj prev < lenb <=> len v > 0)
                                           && (len v > 0 =>
@@ -377,8 +377,8 @@ dstep lena lenb cd _ (dl:dls) =
                                                _wfDistanceToGoal lena lenb v
                                                  < _manhattanDistance lena lenb (poi prev) (poj prev)
                                             && _wfDistanceToGoal lena lenb v
-                                                 < _wfDistanceToGoal lena lenb rest)}
-          / [len rest] @-}
+                                                 < _wfDistanceToGoal lena lenb nodes)}
+          / [len nodes] @-}
     stepAndMerge prev nodes =
       -- When a node lying on the bottom boundary is found on the wave front
       -- all upcoming nodes are discarted because their in-bound childs would
