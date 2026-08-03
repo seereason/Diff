@@ -183,7 +183,7 @@ furthestReaching x y
 -- To prove this, both inputs lengths are threaded within phantom parameters throughout the implementation.
 -- In essence, both lengths are used to encode the edit grid and its end point.
 
-{-@ inline _manhattanDistance @-}
+{-@ reflect _manhattanDistance @-}
 {-@ _manhattanDistance :: lena : Nat -> lenb : Nat -> {i : Nat | lena >= i} -> { j : Nat | lenb >= j} -> Nat @-}
 _manhattanDistance :: Int -> Int -> Int -> Int -> Int
 _manhattanDistance lena lenb i j  = lena - i + lenb - j
@@ -195,15 +195,12 @@ _manhattanDistance lena lenb i j  = lena - i + lenb - j
 -- | The smallest manhattan distance from a wave front node to the goal @(lena, lenb)@.
 -- The empty wave front yields @lena + lenb + 1@, a sentinel strictly greater
 -- than any in-bounds node's distance, acting as the identity for the minimum.
---
--- NOTE: the body deliberately avoids helper functions ('min', '_manhattanDistance'):
--- calls to other lifted functions inside a reflected body prevent PLE
--- from unfolding this function's defining equations.
 _wfDistanceToGoal :: Int -> Int -> [DL] -> Int
 _wfDistanceToGoal lena lenb [] = lena + lenb + 1
 _wfDistanceToGoal lena lenb (dl:dls) =
-  if lena - poi dl + lenb - poj dl < _wfDistanceToGoal lena lenb dls
-  then lena - poi dl + lenb - poj dl
+  -- We avoid using 'min' here so that LH can unfold this definition.
+  if _manhattanDistance lena lenb (poi dl) (poj dl) < _wfDistanceToGoal lena lenb dls
+  then _manhattanDistance lena lenb (poi dl) (poj dl)
   else _wfDistanceToGoal lena lenb dls
 
 -- | A wave front distance lower bound from its diagonal structure:
