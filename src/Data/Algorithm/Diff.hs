@@ -346,12 +346,8 @@ dstep
   -> Int                  -- ^ The current D-length; used for the static check of wave front invariant.
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D
   -> [DL]                 -- ^ A non-empty wave front of nodes at edit distance D+1
--- FIXME: @lena@, @lenb@ and @_d@ in the first equation are phantom (apparently unused)
--- parameters required by local LiquidHaskell specifications.
--- They sit at the first equation as a workaround to GHC removing them
--- when desugaring multi-equation definitions.
--- All could be replaced by underscores after fixing:
--- https://github.com/ucsd-progsys/liquidhaskell/issues/2704
+-- @lena@, @lenb@ and @_d@ are named in the first equation as a workaround
+-- to https://github.com/ucsd-progsys/liquidhaskell/issues/2704
 dstep lena lenb _ _d [] = error "dstep: Cannot perform expansion on an empty list of nodes"
 dstep lena lenb cd _ (dl:dls) =
   if poi dl >= lena then stepAndMerge dl dls
