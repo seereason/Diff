@@ -298,6 +298,14 @@ canDiag eq as bs lena lenb = \i j ->
     arAs = listArray (0,lena - 1) as
     arBs = listArray (0,lenb - 1) bs
 
+{-@ reflect hStep @-}
+hStep :: DL -> DL
+hStep node = node {poi = poi node + 1, path = F : path node}
+
+{-@ reflect vStep @-}
+vStep :: DL -> DL
+vStep node = node {poj = poj node + 1, path = S : path node}
+
 -- | Perform one breadth-first search expansion step, advancing every wave front
 -- 'DL' node by one 'DI' edit (one non-diagonal edge) and then following
 -- any available snake.
@@ -354,14 +362,6 @@ dstep lena lenb cd _ (dl:dls) =
       -- the goal than @dl@'s horizontal child.
       `withProof` _wfDistanceLowerBound lena lenb (_kdiag dl - 2) dls
   where
-    {-@ hStep
-          :: x : DLN lena lenb _d
-          -> {v : DL | len (path v) = _d + 1 && poi v = poi x + 1 && poj v = poj x} @-}
-    hStep node = node {poi = poi node + 1, path = F : path node}
-    {-@ vStep
-          :: x : DLN lena lenb _d
-          -> {v : DL | len (path v) = _d + 1 && poi v = poi x && poj v = poj x + 1} @-}
-    vStep node = node {poj = poj node + 1, path = S : path node}
     -- Merge vertical step of previous node with horizontal step of next node,
     -- selecting the furthest-reaching candidate for each shared k-diagonal,
     -- and extend it along matching elements.
