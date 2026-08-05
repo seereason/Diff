@@ -184,8 +184,8 @@ furthestReaching x y
 -- In essence, both lengths are used to encode the edit grid and its end point.
 
 {-@ reflect _manhattanDistance @-}
-_manhattanDistance :: Int -> Int -> Int -> Int -> Int
-_manhattanDistance lena lenb i j  = lena - i + lenb - j
+_manhattanDistance :: Int -> Int -> DL -> Int
+_manhattanDistance lena lenb dl  = lena - (poi dl) + lenb - (poj dl)
 
 {-@ reflect _wfDistanceToGoal @-}
 -- | The smallest manhattan distance from a wave front node to the goal @(lena, lenb)@.
@@ -195,8 +195,8 @@ _wfDistanceToGoal :: Int -> Int -> [DL] -> Int
 _wfDistanceToGoal lena lenb [] = lena + lenb + 2
 _wfDistanceToGoal lena lenb (dl:dls) =
   -- We avoid using 'min' here so that LH can unfold this definition.
-  if _manhattanDistance lena lenb (poi dl) (poj dl) < _wfDistanceToGoal lena lenb dls
-  then _manhattanDistance lena lenb (poi dl) (poj dl)
+  if _manhattanDistance lena lenb dl < _wfDistanceToGoal lena lenb dls
+  then _manhattanDistance lena lenb dl
   else _wfDistanceToGoal lena lenb dls
 
 -- | A wave front distance lower bound from its diagonal structure:
@@ -216,11 +216,11 @@ _wfDistanceToGoal lena lenb (dl:dls) =
 -- => (within bounds: poj <= lenb)
 -- lena - poi + lenb - poj  >= lena - lenb - k
 -- => (definition of manhattan distance)
--- (*) _manhattanDistance lena lenb poi poj >= lena - lenb - k
+-- (*) _manhattanDistance lena lenb dl >= lena - lenb - k
 -- => (other node's lie in lower diagonals: k' <= k)
 -- (**) lena - lenb - k' >= lena - lenb - k
--- => ((*) applied to k' and combined with (**))
--- _manhattanDistance lena lenb poi' poj' >= lena - lenb - k
+-- => ((*) applied to dl', for k', and combined with (**))
+-- _manhattanDistance lena lenb dl' >= lena - lenb - k
 -- => (_wfDistanceToGoal is the minimum of all node's manhattan distances)
 -- _wfDistanceToGoal lena lenb xs >= lena - lenb - k
 --
@@ -244,7 +244,7 @@ _wfDistanceLowerBoundK lena lenb k (_:dls) = _wfDistanceLowerBoundK lena lenb (k
 _wfDistanceLowerBound
       :: lena : Nat -> lenb : Nat -> {prev : DL | _withinBounds lena lenb prev}
       -> xs : {v : [{dl : DL | _withinBounds lena lenb dl}] | _wfDiags (_kdiag prev - 2) v}
-      -> { poj prev >= lenb =>  _wfDistanceToGoal lena lenb xs > _manhattanDistance lena lenb (poi prev) (poj prev)}
+      -> { poj prev >= lenb =>  _wfDistanceToGoal lena lenb xs > _manhattanDistance lena lenb prev}
  @-}
 _wfDistanceLowerBound :: Int -> Int -> DL -> [DL] -> ()
 _wfDistanceLowerBound lena lenb prev [] = ()
@@ -385,7 +385,7 @@ dstep lena lenb cd _ (dl:dls) =
                                                _kdiag (head v) == _kdiag prev - 1)
                                           && (poj prev < lenb =>
                                                _wfDistanceToGoal lena lenb v
-                                                 < _manhattanDistance lena lenb (poi prev) (poj prev)
+                                                 < _manhattanDistance lena lenb prev
                                             && _wfDistanceToGoal lena lenb v
                                                  < _wfDistanceToGoal lena lenb nodes)}
           / [len nodes] @-}
@@ -433,7 +433,7 @@ addsnake :: lena : Nat
                    && _withinBounds lena lenb v
                    && poi v >= poi dl
                    && poj v >= poj dl}
-         / [_manhattanDistance lena lenb (poi dl) (poj dl)]
+         / [_manhattanDistance lena lenb dl]
 @-}
 addsnake :: Int                  -- ^ First input's length phantom parameter for termination check.
          -> Int                  -- ^ Second input's length phantom parameter for termination check.
