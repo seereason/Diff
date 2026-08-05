@@ -205,8 +205,10 @@ _wfDistanceToGoal lena lenb (dl:dls) =
 
 -- | A wave front distance lower bound from its diagonal structure:
 -- every node of a k-diagonal anchored wave front lies on a diagonal @k' <= k@
--- and within bounds (@poj <= lenb@), hence the wave front distance to the goal
--- is at least @lena - lenb - k@. We can prove it like so:
+-- and within bounds, with diagonals ranging from @-lenb@ to @lena@,
+-- hence the wave front distance to the goal is at least @lena - lenb - k@.
+--
+-- We can prove it manually like so:
 --
 -- @
 -- (definition of k-diagonal)
@@ -218,13 +220,16 @@ _wfDistanceToGoal lena lenb (dl:dls) =
 -- => (within bounds: poj <= lenb)
 -- lena - poi + lenb - poj  >= lena - lenb - k
 -- => (definition of manhattan distance)
--- _manhattanDistance lena lenb poi poj >= lena - lenb - k
--- @
+-- (*) _manhattanDistance lena lenb poi poj >= lena - lenb - k
+-- => (other node's lie in lower diagonals: k' <= k)
+-- (**) lena - lenb - k' >= lena - lenb - k
+-- => ((*) applied to k' and combined with (**))
+-- _manhattanDistance lena lenb poi' poj' >= lena - lenb - k
+-- => (_wfDistanceToGoal is the minimum of all node's manhattan distances)
+-- _wfDistanceToGoal lena lenb xs >= lena - lenb - k
 --
--- In particular, this justifies discarding the nodes after a bottom-boundary node:
--- suppose @(i, lenb)@ is on diagonal @k + 2@, then the following nodes would
--- have distances at least @_manhattanDistance lena lenb i lenb + 2@, thus
--- they cannot beat that node's surviving children in the race to the goal.
+-- QED
+-- @
 {-@ _wfDistanceLowerBoundK
       :: lena : Nat -> lenb : Nat -> {k : Int | lenb + k + 2 >= 0}
       -> xs : {v : [{dl : DL | _withinBounds lena lenb dl}] | _wfDiags k v}
@@ -234,6 +239,11 @@ _wfDistanceLowerBoundK :: Int -> Int -> Int -> [DL] -> ()
 _wfDistanceLowerBoundK _    _    _ []      = ()
 _wfDistanceLowerBoundK lena lenb k (_:dls) = _wfDistanceLowerBoundK lena lenb (k - 2) dls
 
+-- | If a wave front's node (@prev@) is on the bottom boundary, then the following
+-- nodes lie farther from the goal. Intuitively, the reason is that the following
+-- nodes children would need more steps to cross @prev@'s diagonal to reach the goal.
+-- This lemma allows LH to reason about the case where nodes are discarded
+-- after a bottom-boundary node within 'dstep'.
 {-@
 _wfDistanceLowerBound
       :: lena : Nat -> lenb : Nat -> {prev : DL | _withinBounds lena lenb prev}
