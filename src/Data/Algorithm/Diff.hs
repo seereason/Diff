@@ -199,30 +199,37 @@ _wfDistanceToGoal lena lenb (dl:dls) =
   then _manhattanDistance lena lenb dl
   else _wfDistanceToGoal lena lenb dls
 
--- | A wave front distance lower bound from its diagonal structure:
--- every node of a k-diagonal anchored wave front lies on a diagonal @k' <= k@
--- and within bounds, with diagonals ranging from @-lenb@ to @lena@,
--- hence the wave front distance to the goal is at least @lena - lenb - k@.
+-- | A lemma that expresses a lower bound of the wavefront distance in terms
+-- of the diagonal of the first node: @lena - lenb - k@
+--
+-- We assume all the nodes to be within the grid.
+--
+-- @lena - lenb@ is the diagonal of the goal. Informally, the
+-- shortest way from a node must necessarily visit all the intermediate
+-- diagonals. The minimum amount of diagonals to visit is given by the
+-- difference between the diagonal indices of the goal and the first element.
 --
 -- We can prove it manually like so:
 --
+-- For every node @dl = DL i j p@ we can prove
+-- @H(dl) = _manhattanDistance lena lenb dl >= lena - lenb - (i - j)@
+--
 -- @
--- (definition of k-diagonal)
--- k = poi - poj
--- => (algebraic manipulation)
--- poi = k + poj
--- => (algebraic manipulation)
--- lena - poi + lenb - poj = lena - (k + poj) + lenb - poj = lena - lenb - k + 2 * (lenb - poj)
--- => (within bounds: poj <= lenb)
--- lena - poi + lenb - poj  >= lena - lenb - k
--- => (definition of manhattan distance)
--- (*) _manhattanDistance lena lenb dl >= lena - lenb - k
--- => (other node's lie in lower diagonals: k' <= k)
--- (**) lena - lenb - k' >= lena - lenb - k
--- => ((*) applied to dl', for k', and combined with (**))
--- _manhattanDistance lena lenb dl' >= lena - lenb - k
--- => (_wfDistanceToGoal is the minimum of all node's manhattan distances)
--- _wfDistanceToGoal lena lenb xs >= lena - lenb - k
+--   _manhattanDistance lena lenb dl
+-- =
+--   lena - (poi dl) + lenb - (poj dl)
+-- =
+--   lena - i + lenb - j
+-- =
+--   lena - lenb - (i - j) + 2 * (lenb - j)
+-- >=
+--   lena - lenb - (i - j)
+-- @
+--
+-- Since @H(dl)@ holds for every node in the wave front, it follows
+-- that the wave front distance is at least as large as the smallest of
+-- these bounds, which is @lena - lenb - k@ for the largest @k = i0 - j0@,
+-- which is the diagonal of the first node.
 --
 -- QED
 -- @
