@@ -184,14 +184,10 @@ furthestReaching x y
 -- In essence, both lengths are used to encode the edit grid and its end point.
 
 {-@ reflect _manhattanDistance @-}
-{-@ _manhattanDistance :: lena : Nat -> lenb : Nat -> {i : Nat | lena >= i} -> { j : Nat | lenb >= j} -> Nat @-}
 _manhattanDistance :: Int -> Int -> Int -> Int -> Int
 _manhattanDistance lena lenb i j  = lena - i + lenb - j
 
 {-@ reflect _wfDistanceToGoal @-}
-{-@ _wfDistanceToGoal :: lena : Nat -> lenb : Nat
-                       -> nodes:[{dl:DL | _withinBounds lena lenb dl}] -> Nat / [len nodes] @-}
-
 -- | The smallest manhattan distance from a wave front node to the goal @(lena, lenb)@.
 -- The empty wave front yields @lena + lenb + 2@, a sentinel strictly greater
 -- than any in-bounds node's distance, acting as the identity for the minimum.
@@ -272,7 +268,6 @@ _minDistanceNonNegative _    _    []       = ()
 _minDistanceNonNegative lena lenb (_:dls) = _minDistanceNonNegative lena lenb dls
 
 {-@ inline _reducesDistanceToGoal @-}
-{-@ _reducesDistanceToGoal :: lena : Nat -> lenb : Nat -> wf1:[{dl:DL | _withinBounds lena lenb dl}] -> wf2:[{dl:DL | _withinBounds lena lenb dl}] -> Bool @-}
 _reducesDistanceToGoal :: Int -> Int -> [DL] -> [DL] -> Bool
 _reducesDistanceToGoal lena lenb wf1 wf2 = _wfDistanceToGoal lena lenb wf2 < _wfDistanceToGoal lena lenb wf1
 
