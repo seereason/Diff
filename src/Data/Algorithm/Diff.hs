@@ -193,10 +193,10 @@ _manhattanDistance lena lenb i j  = lena - i + lenb - j
                        -> nodes:[{dl:DL | _withinBounds lena lenb dl}] -> Nat / [len nodes] @-}
 
 -- | The smallest manhattan distance from a wave front node to the goal @(lena, lenb)@.
--- The empty wave front yields @lena + lenb + 1@, a sentinel strictly greater
+-- The empty wave front yields @lena + lenb + 2@, a sentinel strictly greater
 -- than any in-bounds node's distance, acting as the identity for the minimum.
 _wfDistanceToGoal :: Int -> Int -> [DL] -> Int
-_wfDistanceToGoal lena lenb [] = lena + lenb + 1
+_wfDistanceToGoal lena lenb [] = lena + lenb + 2
 _wfDistanceToGoal lena lenb (dl:dls) =
   -- We avoid using 'min' here so that LH can unfold this definition.
   if _manhattanDistance lena lenb (poi dl) (poj dl) < _wfDistanceToGoal lena lenb dls
@@ -225,15 +225,27 @@ _wfDistanceToGoal lena lenb (dl:dls) =
 -- suppose @(i, lenb)@ is on diagonal @k + 2@, then the following nodes would
 -- have distances at least @_manhattanDistance lena lenb i lenb + 2@, thus
 -- they cannot beat that node's surviving children in the race to the goal.
-{-@ _wfDistanceLowerBound
-      :: lena : Nat -> lenb : Nat -> k : Int
+{-@ _wfDistanceLowerBoundK
+      :: lena : Nat -> lenb : Nat -> {k : Int | lenb + k + 2 >= 0}
       -> xs : {v : [{dl : DL | _withinBounds lena lenb dl}] | _wfDiags k v}
-      -> {_wfDistanceToGoal lena lenb xs == lena + lenb + 1
-          || _wfDistanceToGoal lena lenb xs >= lena - lenb - k}
+      -> {_wfDistanceToGoal lena lenb xs >= lena - lenb - k}
       / [len xs] @-}
-_wfDistanceLowerBound :: Int -> Int -> Int -> [DL] -> ()
-_wfDistanceLowerBound _    _    _ []       = ()
-_wfDistanceLowerBound lena lenb k (_:dls) = _wfDistanceLowerBound lena lenb (k - 2) dls
+_wfDistanceLowerBoundK :: Int -> Int -> Int -> [DL] -> ()
+_wfDistanceLowerBoundK _    _    _ []      = ()
+_wfDistanceLowerBoundK lena lenb k (_:dls) = _wfDistanceLowerBoundK lena lenb (k - 2) dls
+
+{-@
+_wfDistanceLowerBound
+      :: lena : Nat -> lenb : Nat -> {prev : DL | _withinBounds lena lenb prev}
+      -> xs : {v : [{dl : DL | _withinBounds lena lenb dl}] | _wfDiags (_kdiag prev - 2) v}
+      -> { poj prev >= lenb =>  _wfDistanceToGoal lena lenb xs > _manhattanDistance lena lenb (poi prev) (poj prev)}
+ @-}
+_wfDistanceLowerBound :: Int -> Int -> DL -> [DL] -> ()
+_wfDistanceLowerBound lena lenb prev [] = ()
+_wfDistanceLowerBound lena lenb prev xs@(_:_) = ()
+  where
+    _lemma = _wfDistanceLowerBoundK lena lenb (_kdiag prev - 2) xs
+
 
 -- | The termination metric is non-negative: every in-bounds node has a
 -- non-negative manhattan distance to the goal, and the empty wave front
@@ -353,7 +365,7 @@ dstep lena lenb cd _ (dl:dls) =
       -- If @dl@ lies on the bottom boundary, @stepAndMerge dl dls@ discards
       -- all of @dls@; the lemma shows the discarded nodes are farther from
       -- the goal than @dl@'s horizontal child.
-      `withProof` _wfDistanceLowerBound lena lenb (_kdiag dl - 2) dls
+      `withProof` _wfDistanceLowerBound lena lenb dl dls
   where
     -- Merge vertical step of previous node with horizontal step of next node,
     -- selecting the furthest-reaching candidate for each shared k-diagonal,
@@ -396,7 +408,7 @@ dstep lena lenb cd _ (dl:dls) =
                 -- If @next@ lies on the bottom boundary, the recursive call
                 -- discards all of @rest@; the lemma shows the discarded nodes
                 -- are farther from the goal than the merged child.
-                `withProof` _wfDistanceLowerBound lena lenb (_kdiag next - 2) rest
+                `withProof` _wfDistanceLowerBound lena lenb next rest
 
 -- | Follow a /snake/ from the current position of a 'DL' node.
 --
