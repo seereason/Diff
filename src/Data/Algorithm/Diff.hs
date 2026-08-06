@@ -151,6 +151,11 @@ _wfDiags k (dl:dls) = poi dl - poj dl == k && _wfDiags (k - 2) dls
 
 -- A wave front is a list of 'DL' nodes, all at the same edit distance @D@,
 -- with k-diagonals @D@, @D−2@, …, @-D+2@, @-D@.
+-- Wave fronts establish a connection with the Myers algorithm:
+-- @D@ corresponds to the algorithm's current iteration step and the resulting
+-- 'ses' length. In Myers the diagonal arrangement is used to optimize space;
+-- within 'dstep' it allows us to ensure 'furthestReaching' always compares
+-- nodes on the same diagonals.
 {-@ type WaveFront M N D = {xs : [DLN M N D] | _wfDiags (_kdiag (head xs)) xs} @-}
 
 -- | Select the furthest-reaching candidate of two 'DL' nodes competing for the
@@ -369,6 +374,8 @@ dstep
 -- @lena@, @lenb@ and @_d@ are named in the first equation as a workaround
 -- to https://github.com/ucsd-progsys/liquidhaskell/issues/2704
 dstep lena lenb _ _d [] = error "dstep: Cannot perform expansion on an empty list of nodes"
+-- This definition branches according to whether a node is on a boundary
+-- to avoid constructing out-of-bound nodes and discarding other non-competing nodes.
 dstep lena lenb cd _ (dl:dls) =
   if poi dl >= lena then stepAndMerge dl dls
   else
@@ -404,15 +411,11 @@ dstep lena lenb cd _ (dl:dls) =
       else case nodes of
         [] -> [addsnake lena lenb cd $ vStep prev]
         (next:rest) ->
-            -- HACK: This check saves us from an unneeded call to furthestReaching,
-            -- as the horizontal child of the next node would be out-of-bounds,
-            -- but in fact we could drop this child node altogether because
-            -- the next node being on the right border means all previous nodes
-            -- would need to cross the next node's diagonal in more steps,
-            -- and thus cannot compete to the endpoint.
-            -- However, this would result in a negligible performance gain
-            -- and the loss of the wave front diagonal invariant,
-            -- so we keep it for now.
+            -- The next node being on the right border means all
+            -- previous nodes cannot compete to the endpoint, because their
+            -- children require more steps to cross the next node's diagonal.
+            -- HACK: However, we keep @prev@'s vertical child node to preserve
+            -- the '_wfDiags' invariant at a negligible performance penalty.
             if poi next >= lena then addsnake lena lenb cd (vStep prev) : stepAndMerge next rest
             else
               (addsnake lena lenb cd (furthestReaching (vStep prev) (hStep next)) : stepAndMerge next rest)
