@@ -77,8 +77,7 @@ import Prelude hiding (pi)
 import Data.Array (listArray, (!))
 import Data.Algorithm.Diff.Type
 import Data.Algorithm.Diff.Refinement (fst3, snd3, thd3, headIsFirst,
-                                        headIsSecond, headIsBoth, noStuttering,
-                                        withProof)
+                                        headIsSecond, headIsBoth, noStuttering)
 import Data.Foldable (find)
 
 -- | /Diff Instruction/ — an internal enum recording the direction of a single
@@ -377,7 +376,7 @@ dstep lena lenb cd _ (dl:dls) =
       -- If @dl@ lies on the bottom boundary, @stepAndMerge dl dls@ discards
       -- all of @dls@; the lemma shows the discarded nodes are farther from
       -- the goal than @dl@'s horizontal child.
-      `withProof` _wfDistanceLowerBound lena lenb dl dls
+      `const` _wfDistanceLowerBound lena lenb dl dls
   where
     -- Merge vertical step of previous node with horizontal step of next node,
     -- selecting the furthest-reaching candidate for each shared k-diagonal,
@@ -420,7 +419,7 @@ dstep lena lenb cd _ (dl:dls) =
                 -- If @next@ lies on the bottom boundary, the recursive call
                 -- discards all of @rest@; the lemma shows the discarded nodes
                 -- are farther from the goal than the merged child.
-                `withProof` _wfDistanceLowerBound lena lenb next rest
+                `const` _wfDistanceLowerBound lena lenb next rest
 
 -- | Follow a /snake/ from the current position of a 'DL' node.
 --
@@ -490,7 +489,7 @@ ses eq as bs = search 0 [addsnake lena lenb cd (DL 0 0 [])]
                       Just p  -> path p
                       Nothing -> let wf' = dstep lena lenb cd d wf
                                  in search (d + 1)
-                                           (wf' `withProof` _minDistanceNonNegative lena lenb wf')
+                                           (wf' `const` _minDistanceNonNegative lena lenb wf')
                   -- The abstract refinement @q@ lets 'find' carry the wave
                   -- front element refinement (notably @len (path dl) == d@)
                   -- over to the returned endpoint.
