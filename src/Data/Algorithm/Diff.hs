@@ -125,9 +125,10 @@ data DL = DL
                      --   'S' steps are stored.
     } deriving (Show, Eq)
 
--- Field refinements are only attached when a 'DL' is destructed;
--- here a local invariant is declared to make the coordinate non-negativity available
--- for opaque values (e.g. list elements reached through PLE unfoldings).
+-- Field refinements are implemented with measures, which means they are
+-- available only when a 'DL' value is pattern matched;
+-- This invariant on DLs makes the coordinates non-negativity available
+-- for any value of type 'DL' regardless of whether it has been pattern matched.
 {-@ using (DL) as { dl : DL | poi dl >= 0 && poj dl >= 0 } @-}
 
 -- A "D-path location node" is a 'DL' value within the edit grid bounds
@@ -403,10 +404,8 @@ dstep lena lenb cd _ (dl:dls) =
                                                  < _wfDistanceToGoal lena lenb nodes)}
           / [len nodes] @-}
     stepAndMerge prev nodes =
-      -- When a node lying on the bottom boundary is found on the wave front
-      -- all upcoming nodes are discarted because their in-bound childs would
-      -- eventually need to cross the former's diagonal (in /more/ steps)
-      -- to reach the endpoint, and thus are not SES candidates.
+      -- When a node lies in the bottom boundary no subsequent node can reach
+      -- the goal faster. See lemma '_wfDistanceLowerBound'.
       if poj prev >= lenb then []
       else case nodes of
         [] -> [addsnake lena lenb cd $ vStep prev]
