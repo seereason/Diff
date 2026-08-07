@@ -150,6 +150,47 @@ _wfDiags :: Int -> [DL] -> Bool
 _wfDiags _ [] = True
 _wfDiags k (dl:dls) = poi dl - poj dl == k && _wfDiags (k - 2) dls
 
+--------------------------------------------------------------------------------
+-- [NOTE: diagonal-invariant]
+--
+-- The '_wfDiags' property states that succesive nodes in a wave front lie
+-- on diagonals whose indices differ by two. This is leveraged by LiquidHaskell
+-- to check that 'furthestReaching' precondition (that the two nodes being
+-- compared lie on the same diagonal) is satisfied within `dstep`.
+-- However, even though a more flexible property could be used to prove it,
+-- a compromise was made in preserving this invariant to keep the specification
+-- complexity low at a small performance penalty cost.
+-- This note documents this compromise.
+--
+-- To prove 'ses' terminates, wave fronts are restricted to be within the
+-- edit grid. This is done by placing checks for boundary nodes within 'dstep'
+-- to avoid constructing nodes outside the grid. 'dstep' leverages such checks
+-- in optimizations that rely on the observation that boundary nodes signal
+-- other nodes cannot compete to the goal:
+--
+--  * If a bottom boundary is found, all subsequent nodes are not considered.
+--
+--  * If a right boundary is found, all previously constructed child nodes
+--    can be dropped.
+--
+-- Both preserve the diagonal invariant, as the wave front would just become
+-- narrower. However, due to the asymmetry of list traversal, the first one is
+-- readily implemented, while the second requires an additional operation whose
+-- cost trumps the gain of not keeping them for next iterations (according to
+-- existing benchmarks). Because of this, and 'stepAndMege' looking a two
+-- succesive nodes at a time, only the current iteration child /could/ be
+-- effectively dropped.
+--
+-- However, dropping the current iteration child node results in wave fronts
+-- with holes: now for every right boundary node found, a diagonal is not
+-- occupied. This requires the diagonal invariant to be changed to "diagonal
+-- indices in succesive nodes of a wave front differ by 2, unless a node lies
+-- on the right boundary, in which case its diagonal must differ from the previous
+-- by a factor of 2". It was decided not to follow this path, because the gain
+-- of not keeping this node was negligible, specially compared with the resulting
+-- increase in specification complexity.
+--------------------------------------------------------------------------------
+
 -- A wave front is a list of 'DL' nodes, all at the same edit distance @D@,
 -- with k-diagonals @D@, @D−2@, …, @-D+2@, @-D@.
 -- Wave fronts establish a connection with the Myers algorithm:
@@ -410,12 +451,13 @@ dstep lena lenb cd _ (dl:dls) =
       else case nodes of
         [] -> [addsnake lena lenb cd $ vStep prev]
         (next:rest) ->
-            -- The next node being on the right border means all
-            -- previous nodes cannot compete to the endpoint, because their
-            -- children require more steps to cross the next node's diagonal.
-            -- HACK: However, we keep @prev@'s vertical child node to preserve
+            -- The next node being on the right border implies 'hStep' would
+            -- produce a node outside the grid, but also that previous node's
+            -- children cannot compete to the endpoint.
+            -- However, we keep @prev@'s vertical child node to preserve
             -- the '_wfDiags' invariant at a negligible performance penalty.
-            if poi next >= lena then addsnake lena lenb cd (vStep prev) : stepAndMerge next rest
+            -- See [NOTE: diagonal-invariant]
+            if poi next >= lena then vStep prev : stepAndMerge next rest
             else
               (addsnake lena lenb cd (furthestReaching (vStep prev) (hStep next)) : stepAndMerge next rest)
                 -- If @next@ lies on the bottom boundary, the recursive call
