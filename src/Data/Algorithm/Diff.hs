@@ -159,6 +159,7 @@ _wfDiags k (dl:dls) = poi dl - poj dl == k && _wfDiags (k - 2) dls
 -- nodes on the same diagonals.
 {-@ type WaveFront M N D = {xs : [DLN M N D] | _wfDiags (_kdiag (head xs)) xs} @-}
 
+{-@ reflect furthestReaching @-}
 -- | Select the furthest-reaching candidate of two 'DL' nodes competing for the
 -- same k-diagonal, as required by the Myers algorithm.
 --
@@ -174,9 +175,8 @@ _wfDiags k (dl:dls) = poi dl - poj dl == k && _wfDiags (k - 2) dls
 --
 -- > length (path x) == length (path y)
 {-@ furthestReaching ::  x : DL
-                     -> {y : DL | _kdiag x = _kdiag y}
-                     -> {v : DL | (v = x || v = y)
-                               && poi v >= poi x && poi v >= poi y} @-}
+                     -> {y : DL | _kdiag x = _kdiag y && len (path x) = len (path y)}
+                     -> {v : DL | (v = x || v = y)} @-}
 furthestReaching :: DL -> DL -> DL
 furthestReaching x y
   | poi x >= poi y = x
