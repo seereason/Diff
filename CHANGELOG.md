@@ -1,3 +1,10 @@
+# 2.0.0
+
+  - Remove `groupBy'` from `Data.Algorithm.DiffContext` exports (#26).
+    Use `Data.List.GroupBy.groupBy` from `groupBy` package instead.
+  - Optimize `Data.Algorithm.Diff` functions (#25, #30, #37).
+    ~2.4x and ~8.5x `getDiff` improvement on benchmarks.
+
 # 1.0.2
 
   - Output correct format when an input file is empty, e.g. `@@ --0,0 +1,3 @@`.

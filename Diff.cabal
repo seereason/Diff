@@ -1,6 +1,6 @@
 Cabal-Version:       3.14
 name:                Diff
-version:             2.0.0
+version:             2.0.1
 synopsis:            Diff algorithm in pure Haskell
 description:         Implementation of the standard diff algorithm in Haskell.
  .
