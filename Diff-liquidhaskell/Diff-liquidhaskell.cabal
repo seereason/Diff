@@ -1,4 +1,4 @@
-cabal-version: 2.4
+cabal-version: 1.18
 name:          Diff-liquidhaskell
 version:       0.1.0.0
 synopsis:      LiquidHaskell static checks for the Diff package
@@ -30,7 +30,7 @@ library
       -- LH version scheme: 0.<GHC_VERSION>.<LH_REVISION>
       -- Update the corresponding versions in .github/workflows/liquidhaskell.yml
       -- after upgrading GHC and LH to keep CI in sync.
-    , liquidhaskell ^>= 0.9.14.1.1
+    , liquidhaskell ==0.9.14.1.1
   -- Recompilation check is disabled to make sure changes to specification
   -- annotations are checked by the LH plugin (otherwise they are silently ignored
   -- if no source change is introduced).
